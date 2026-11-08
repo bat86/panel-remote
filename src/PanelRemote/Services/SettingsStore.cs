@@ -13,6 +13,12 @@ public sealed class ManualDisplayMapping
 {
     /// <summary>Уникальный ключ дисплея (DisplayTargetInfo.Key)</summary>
     public string DisplayKey { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Путь монитора из EDID (DisplayTargetInfo.DevicePath).
+    /// Не меняется при переподключении кабеля, поэтому это основной признак.
+    /// </summary>
+    public string MonitorDevicePath { get; set; } = string.Empty;
     
     /// <summary>Человекочитаемое имя для проверки (на случай изменения конфигурации)</summary>
     public string DisplayFriendlyName { get; set; } = string.Empty;

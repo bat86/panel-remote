@@ -1,7 +1,10 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.Diagnostics;
 using System.Linq;
+using System.Threading.Tasks;
+using System.Windows;
 using System.Windows.Input;
 using PanelRemote.Infrastructure;
 using PanelRemote.Models;
@@ -31,7 +34,8 @@ public sealed class AdminViewModel : ObservableObject
         DisplayItems = new ObservableCollection<DisplayItemViewModel>();
         AudioItems = new ObservableCollection<AudioItemViewModel>();
         
-        SaveCommand = new RelayCommand(ExecuteSave);
+        SaveCommand = new AsyncRelayCommand(ExecuteSaveAsync);
+        SaveAndRestartCommand = new AsyncRelayCommand(ExecuteSaveAndRestartAsync);
         ResetToAutoCommand = new RelayCommand(ExecuteResetToAuto);
         RefreshCommand = new RelayCommand(ExecuteRefresh);
         
@@ -58,6 +62,7 @@ public sealed class AdminViewModel : ObservableObject
     }
     
     public ICommand SaveCommand { get; }
+    public ICommand SaveAndRestartCommand { get; }
     public ICommand ResetToAutoCommand { get; }
     public ICommand RefreshCommand { get; }
 
@@ -77,12 +82,16 @@ public sealed class AdminViewModel : ObservableObject
             foreach (var display in allDisplays)
             {
                 var role = DisplayRole.None;
-                
-                if (adminConfig?.PanelDisplayOverride?.DisplayKey == display.Key)
+
+                if (MatchesOverride(adminConfig?.PanelDisplayOverride, display))
+                {
                     role = DisplayRole.Panel;
-                else if (adminConfig?.ComputerDisplayOverride?.DisplayKey == display.Key)
+                }
+                else if (MatchesOverride(adminConfig?.ComputerDisplayOverride, display))
+                {
                     role = DisplayRole.Computer;
-                
+                }
+
                 DisplayItems.Add(new DisplayItemViewModel(display, role));
             }
             
@@ -109,7 +118,29 @@ public sealed class AdminViewModel : ObservableObject
         }
     }
     
-    private void ExecuteSave()
+    private async Task ExecuteSaveAsync()
+    {
+        if (!await SaveConfigurationAsync().ConfigureAwait(true))
+        {
+            return;
+        }
+
+        StatusMessage = UseManualConfiguration
+            ? "✓ Ручная настройка сохранена и применена. Список обновлён."
+            : "✓ Автоопределение включено и применено.";
+    }
+
+    private async Task ExecuteSaveAndRestartAsync()
+    {
+        if (!await SaveConfigurationAsync().ConfigureAwait(true))
+        {
+            return;
+        }
+
+        RestartApplication();
+    }
+
+    private async Task<bool> SaveConfigurationAsync()
     {
         try
         {
@@ -128,6 +159,7 @@ public sealed class AdminViewModel : ObservableObject
                     adminConfig.PanelDisplayOverride = new ManualDisplayMapping
                     {
                         DisplayKey = panelDisplay.Display.Key,
+                        MonitorDevicePath = panelDisplay.Display.DevicePath,
                         DisplayFriendlyName = panelDisplay.Display.FriendlyName,
                         ConnectionType = panelDisplay.Display.ConnectionName
                     };
@@ -140,6 +172,7 @@ public sealed class AdminViewModel : ObservableObject
                     adminConfig.ComputerDisplayOverride = new ManualDisplayMapping
                     {
                         DisplayKey = computerDisplay.Display.Key,
+                        MonitorDevicePath = computerDisplay.Display.DevicePath,
                         DisplayFriendlyName = computerDisplay.Display.FriendlyName,
                         ConnectionType = computerDisplay.Display.ConnectionName
                     };
@@ -165,18 +198,86 @@ public sealed class AdminViewModel : ObservableObject
             _settings.Save();
             
             _log.Info($"Административная конфигурация сохранена: режим={(UseManualConfiguration ? "ручной" : "автоопределение")}");
-            
-            StatusMessage = UseManualConfiguration 
-                ? "✓ Ручная конфигурация сохранена. Перезапустите приложение для применения."
-                : "✓ Автоопределение включено. Перезапустите приложение для применения.";
+
+            // Применяем сразу, не дожидаясь перезапуска.
+            StatusMessage = "Сохраняю и применяю…";
+            await _controller.RefreshAsync().ConfigureAwait(true);
+            RefreshDevices();
+            return true;
         }
         catch (Exception ex)
         {
             _log.Error("Ошибка при сохранении административной конфигурации", ex);
             StatusMessage = "Ошибка при сохранении: " + ex.Message;
+            return false;
+        }
+    }
+
+    /// <summary>
+    /// Перезапускает программу, чтобы настройки гарантированно применились
+    /// с чистого листа (и не приходилось искать ярлык в трее).
+    /// </summary>
+    private void RestartApplication()
+    {
+        try
+        {
+            var exe = Environment.ProcessPath;
+            if (string.IsNullOrWhiteSpace(exe))
+            {
+                StatusMessage = "Не удалось определить путь к программе. Перезапустите вручную.";
+                return;
+            }
+
+            // Небольшая пауза нужна, чтобы текущий процесс успел выйти
+            // и не сработала защита от второго экземпляра.
+            var arguments = $"/c ping -n 3 127.0.0.1 >nul & start \"\" \"{exe}\" --tray";
+            Process.Start(new ProcessStartInfo("cmd.exe", arguments)
+            {
+                CreateNoWindow = true,
+                UseShellExecute = false
+            });
+
+            StatusMessage = "Перезапускаю…";
+            Application.Current.Shutdown();
+        }
+        catch (Exception ex)
+        {
+            _log.Error("Не удалось перезапустить приложение", ex);
+            StatusMessage = "Не удалось перезапустить: " + ex.Message + ". Запустите программу вручную.";
         }
     }
     
+    /// <summary>
+    /// Сравнивает дисплей с сохранённым переопределением так же, как это делает
+    /// DisplayService: путь EDID, затем ключ, затем имя с типом подключения.
+    /// Иначе окно не показывает уже выбранные устройства.
+    /// </summary>
+    private static bool MatchesOverride(ManualDisplayMapping? mapping, DisplayTargetInfo display)
+    {
+        if (mapping is null)
+        {
+            return false;
+        }
+
+        if (!string.IsNullOrWhiteSpace(mapping.MonitorDevicePath)
+            && !string.IsNullOrWhiteSpace(display.DevicePath)
+            && string.Equals(display.DevicePath, mapping.MonitorDevicePath, StringComparison.OrdinalIgnoreCase))
+        {
+            return true;
+        }
+
+        if (!string.IsNullOrWhiteSpace(mapping.DisplayKey)
+            && string.Equals(display.Key, mapping.DisplayKey, StringComparison.OrdinalIgnoreCase))
+        {
+            return true;
+        }
+
+        return !string.IsNullOrWhiteSpace(mapping.DisplayFriendlyName)
+               && string.Equals(display.DisplayName, mapping.DisplayFriendlyName, StringComparison.OrdinalIgnoreCase)
+               && (string.IsNullOrWhiteSpace(mapping.ConnectionType)
+                   || string.Equals(display.ConnectionName, mapping.ConnectionType, StringComparison.OrdinalIgnoreCase));
+    }
+
     private void ExecuteResetToAuto()
     {
         UseManualConfiguration = false;

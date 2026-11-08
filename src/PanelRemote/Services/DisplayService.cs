@@ -28,6 +28,8 @@ public sealed class DisplayService
     private readonly SettingsStore _settings;
     private readonly object _gate = new();
     private string? _lastPanelLogKey;
+    private string? _lastManualPanelKey;
+    private string? _lastManualComputerKey;
 
     public DisplayService(AppLog log, SettingsStore settings)
     {
@@ -1044,6 +1046,66 @@ public sealed class DisplayService
         return result;
     }
 
+    /// <summary>
+    /// Ищет дисплей из ручной настройки: сначала по стабильному пути EDID,
+    /// затем по ключу target (меняется при переподключении), затем по имени
+    /// и типу подключения. Без этого сохранённая настройка «терялась».
+    /// </summary>
+    private static DisplayTargetInfo? ResolveManualTarget(
+        List<DisplayTargetInfo> targets,
+        PanelRemote.Services.ManualDisplayMapping mapping)
+    {
+        if (!string.IsNullOrWhiteSpace(mapping.MonitorDevicePath))
+        {
+            var byPath = targets.FirstOrDefault(t =>
+                !string.IsNullOrWhiteSpace(t.DevicePath)
+                && string.Equals(t.DevicePath, mapping.MonitorDevicePath, StringComparison.OrdinalIgnoreCase));
+
+            if (byPath is not null)
+            {
+                return byPath;
+            }
+        }
+
+        if (!string.IsNullOrWhiteSpace(mapping.DisplayKey))
+        {
+            var byKey = targets.FirstOrDefault(t =>
+                string.Equals(t.Key, mapping.DisplayKey, StringComparison.OrdinalIgnoreCase));
+
+            if (byKey is not null)
+            {
+                return byKey;
+            }
+        }
+
+        if (!string.IsNullOrWhiteSpace(mapping.DisplayFriendlyName))
+        {
+            var byName = targets
+                .Where(t => t.Available
+                            && string.Equals(t.DisplayName, mapping.DisplayFriendlyName, StringComparison.OrdinalIgnoreCase))
+                .OrderByDescending(t => t.Active)
+                .ToList();
+
+            if (byName.Count > 0)
+            {
+                if (!string.IsNullOrWhiteSpace(mapping.ConnectionType))
+                {
+                    var byConnection = byName.FirstOrDefault(t =>
+                        string.Equals(t.ConnectionName, mapping.ConnectionType, StringComparison.OrdinalIgnoreCase));
+
+                    if (byConnection is not null)
+                    {
+                        return byConnection;
+                    }
+                }
+
+                return byName[0];
+            }
+        }
+
+        return null;
+    }
+
     private DisplayTargetInfo? SelectPanel(List<DisplayTargetInfo> targets)
     {
         // Проверяем административную конфигурацию
@@ -1051,12 +1113,16 @@ public sealed class DisplayService
         if (adminConfig?.UseManualConfiguration == true 
             && adminConfig.PanelDisplayOverride is not null)
         {
-            var manualPanel = targets.FirstOrDefault(t => 
-                t.Key == adminConfig.PanelDisplayOverride.DisplayKey);
-            
+            var manualPanel = ResolveManualTarget(targets, adminConfig.PanelDisplayOverride);
+
             if (manualPanel is not null)
             {
-                _log.Info($"Используется ручная настройка панели: {manualPanel.DisplayName} ({manualPanel.ConnectionName})");
+                if (!string.Equals(_lastManualPanelKey, manualPanel.Key, StringComparison.OrdinalIgnoreCase))
+                {
+                    _lastManualPanelKey = manualPanel.Key;
+                    _log.Info($"Используется ручная настройка панели: {manualPanel.DisplayName} ({manualPanel.ConnectionName})");
+                }
+
                 return manualPanel;
             }
             else
@@ -1153,12 +1219,16 @@ public sealed class DisplayService
         if (adminConfig?.UseManualConfiguration == true 
             && adminConfig.ComputerDisplayOverride is not null)
         {
-            var manualComputer = targets.FirstOrDefault(t => 
-                t.Key == adminConfig.ComputerDisplayOverride.DisplayKey);
-            
+            var manualComputer = ResolveManualTarget(targets, adminConfig.ComputerDisplayOverride);
+
             if (manualComputer is not null)
             {
-                _log.Info($"Используется ручная настройка компьютера: {manualComputer.DisplayName} ({manualComputer.ConnectionName})");
+                if (!string.Equals(_lastManualComputerKey, manualComputer.Key, StringComparison.OrdinalIgnoreCase))
+                {
+                    _lastManualComputerKey = manualComputer.Key;
+                    _log.Info($"Используется ручная настройка компьютера: {manualComputer.DisplayName} ({manualComputer.ConnectionName})");
+                }
+
                 return manualComputer;
             }
             else
