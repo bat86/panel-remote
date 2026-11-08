@@ -133,7 +133,7 @@ public sealed class AdminViewModel : ObservableObject
                     }
                 }
 
-                DisplayItems.Add(new DisplayItemViewModel(display, role, OnRoleChanged));
+                DisplayItems.Add(new DisplayItemViewModel(display, role, OnDisplayRoleChanged));
             }
             
             // Заполняем список аудиоустройств
@@ -165,11 +165,11 @@ public sealed class AdminViewModel : ObservableObject
                     }
                 }
 
-                AudioItems.Add(new AudioItemViewModel(endpoint, role, OnRoleChanged));
+                AudioItems.Add(new AudioItemViewModel(endpoint, role, OnAudioRoleChanged));
             }
             
-            OnRoleChanged();
-        StatusMessage = $"Найдено дисплеев: {DisplayItems.Count}, аудиоустройств: {AudioItems.Count}";
+            OnPropertyChanged(nameof(SelectionSummary));
+            StatusMessage = $"Найдено дисплеев: {DisplayItems.Count}, аудиоустройств: {AudioItems.Count}";
         }
         catch (Exception ex)
         {
@@ -349,8 +349,35 @@ public sealed class AdminViewModel : ObservableObject
                    || string.Equals(display.ConnectionName, mapping.ConnectionType, StringComparison.OrdinalIgnoreCase));
     }
 
-    private void OnRoleChanged()
+    private void OnDisplayRoleChanged(DisplayItemViewModel changed)
     {
+        if (changed.Role != DisplayRole.None)
+        {
+            foreach (var other in DisplayItems)
+            {
+                if (!ReferenceEquals(other, changed) && other.Role == changed.Role)
+                {
+                    other.Role = DisplayRole.None;
+                }
+            }
+        }
+
+        OnPropertyChanged(nameof(SelectionSummary));
+    }
+
+    private void OnAudioRoleChanged(AudioItemViewModel changed)
+    {
+        if (changed.Role != AudioRole.None)
+        {
+            foreach (var other in AudioItems)
+            {
+                if (!ReferenceEquals(other, changed) && other.Role == changed.Role)
+                {
+                    other.Role = AudioRole.None;
+                }
+            }
+        }
+
         OnPropertyChanged(nameof(SelectionSummary));
     }
 
@@ -398,9 +425,9 @@ public enum AudioRole
 public sealed class DisplayItemViewModel : ObservableObject
 {
     private DisplayRole _role;
-    private readonly Action? _changed;
+    private readonly Action<DisplayItemViewModel>? _changed;
 
-    public DisplayItemViewModel(DisplayTargetInfo display, DisplayRole role, Action? changed = null)
+    public DisplayItemViewModel(DisplayTargetInfo display, DisplayRole role, Action<DisplayItemViewModel>? changed = null)
     {
         Display = display;
         _role = role;
@@ -416,7 +443,7 @@ public sealed class DisplayItemViewModel : ObservableObject
         {
             if (SetProperty(ref _role, value))
             {
-                _changed?.Invoke();
+                _changed?.Invoke(this);
             }
         }
     }
@@ -433,9 +460,9 @@ public sealed class DisplayItemViewModel : ObservableObject
 public sealed class AudioItemViewModel : ObservableObject
 {
     private AudioRole _role;
-    private readonly Action? _changed;
+    private readonly Action<AudioItemViewModel>? _changed;
 
-    public AudioItemViewModel(AudioEndpointInfo endpoint, AudioRole role, Action? changed = null)
+    public AudioItemViewModel(AudioEndpointInfo endpoint, AudioRole role, Action<AudioItemViewModel>? changed = null)
     {
         Endpoint = endpoint;
         _role = role;
@@ -451,7 +478,7 @@ public sealed class AudioItemViewModel : ObservableObject
         {
             if (SetProperty(ref _role, value))
             {
-                _changed?.Invoke();
+                _changed?.Invoke(this);
             }
         }
     }

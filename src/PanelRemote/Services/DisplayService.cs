@@ -208,18 +208,31 @@ public sealed class DisplayService
                     return Failure(mode, before, "Не найден экран компьютера.");
                 }
 
+                // В ручном режиме работаем только с выбранной парой: третий монитор
+                // (даже физически подключённый) выключается.
+                var adminConfig = _settings.Current.AdminConfig;
+                var manualPair = adminConfig?.UseManualConfiguration == true
+                                 && adminConfig.PanelDisplayOverride is not null
+                                 && adminConfig.ComputerDisplayOverride is not null
+                                 && before.Panel is not null
+                                 && before.Computer is not null;
+
+                var onlyPair = manualPair
+                    ? new[] { before.Panel!.Key, before.Computer!.Key }
+                    : null;
+
                 int code;
                 if (mode is DisplayMode.ComputerOnly or DisplayMode.PanelOnly)
                 {
                     // На стационарном ПК topology INTERNAL/EXTERNAL возвращает 0,
                     // но ничего не меняет, поэтому сразу правим набор путей.
-                    code = ApplyByEditingPaths(mode, before) ? 0 : -1;
+                    code = ApplyByEditingPaths(mode, before, onlyPair) ? 0 : -1;
                 }
-                else if (mode == DisplayMode.Extend && !before.PanelConnected)
+                else if (mode == DisplayMode.Extend && (onlyPair is not null || !before.PanelConnected))
                 {
-                    // Без видимой панели SDC_TOPOLOGY_EXTEND может подвесить драйвер.
-                    // Собираем расширение из доступных путей — панель подключится позже.
-                    code = ApplyByEditingPaths(DisplayMode.Extend, before) ? 0 : -1;
+                    // Без видимой панели SDC_TOPOLOGY_EXTEND может подвесить драйвер,
+                    // поэтому расширение собирается правкой путей.
+                    code = ApplyByEditingPaths(DisplayMode.Extend, before, onlyPair) ? 0 : -1;
                 }
                 else
                 {
@@ -251,11 +264,7 @@ public sealed class DisplayService
                 if (!Matches(mode, after) && mode is DisplayMode.ComputerOnly or DisplayMode.PanelOnly or DisplayMode.Extend)
                 {
                     _log.Warn($"Режим {mode.Short()} не подтвердился, пробую ещё раз.");
-                    if (mode is DisplayMode.ComputerOnly or DisplayMode.PanelOnly)
-                    {
-                        ApplyByEditingPaths(mode, after);
-                    }
-                    else
+                    if (!ApplyByEditingPaths(mode, after, onlyPair))
                     {
                         TryApplyCustom(mode, after);
                     }
@@ -1213,13 +1222,13 @@ public sealed class DisplayService
             }
         }
         
-        // Автоопределение. Панелью может быть только HDMI/USB-C экран
-        // или монитор с «панельным» именем: иначе, когда панель отключена,
-        // панелью назначался обычный DisplayPort-монитор, и кнопка
-        // «Только компьютер» гасила основной экран.
+        // Автоопределение. Панелью может быть любой порт, но основной
+        // DisplayPort-монитор панелью не считается: иначе, когда панель
+        // отключена, ею назначался главный экран и «Только компьютер» его гасил.
         var candidates = targets
             .Where(t => t.Available && !t.IsInternal)
             .Where(t => t.Connection is DisplayConnectionKind.Hdmi or DisplayConnectionKind.UsbC
+                        || !t.IsPrimary
                         || LooksLikePanel(t.FriendlyName))
             .ToList();
 

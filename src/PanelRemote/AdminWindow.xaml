@@ -151,15 +151,15 @@
                                                 Orientation="Horizontal"
                                                 VerticalAlignment="Center">
                                         <RadioButton Content="Панель"
-                                                     GroupName="DisplayRoleGroup"
+                                                     GroupName="{Binding Display.Key}"
                                                      IsChecked="{Binding Role, Converter={StaticResource EnumToBoolConverter}, ConverterParameter=Panel}"
                                                      Style="{StaticResource RoleRadioButton}"/>
                                         <RadioButton Content="Компьютер"
-                                                     GroupName="DisplayRoleGroup"
+                                                     GroupName="{Binding Display.Key}"
                                                      IsChecked="{Binding Role, Converter={StaticResource EnumToBoolConverter}, ConverterParameter=Computer}"
                                                      Style="{StaticResource RoleRadioButton}"/>
                                         <RadioButton Content="—"
-                                                     GroupName="DisplayRoleGroup"
+                                                     GroupName="{Binding Display.Key}"
                                                      IsChecked="{Binding Role, Converter={StaticResource EnumToBoolConverter}, ConverterParameter=None}"
                                                      Style="{StaticResource RoleRadioButton}"
                                                      ToolTip="Не использовать"/>
@@ -203,15 +203,15 @@
                                                 Orientation="Horizontal"
                                                 VerticalAlignment="Center">
                                         <RadioButton Content="Панель"
-                                                     GroupName="AudioRoleGroup"
+                                                     GroupName="{Binding Endpoint.Id}"
                                                      IsChecked="{Binding Role, Converter={StaticResource EnumToBoolConverter}, ConverterParameter=Panel}"
                                                      Style="{StaticResource RoleRadioButton}"/>
                                         <RadioButton Content="Компьютер"
-                                                     GroupName="AudioRoleGroup"
+                                                     GroupName="{Binding Endpoint.Id}"
                                                      IsChecked="{Binding Role, Converter={StaticResource EnumToBoolConverter}, ConverterParameter=Computer}"
                                                      Style="{StaticResource RoleRadioButton}"/>
                                         <RadioButton Content="—"
-                                                     GroupName="AudioRoleGroup"
+                                                     GroupName="{Binding Endpoint.Id}"
                                                      IsChecked="{Binding Role, Converter={StaticResource EnumToBoolConverter}, ConverterParameter=None}"
                                                      Style="{StaticResource RoleRadioButton}"
                                                      ToolTip="Не использовать"/>
