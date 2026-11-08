@@ -592,7 +592,32 @@ public sealed class DisplayService
                     }
                 }
 
-                return result;
+                // Первым идёт экран компьютера: Windows делает основным тот экран,
+                // чей источник стоит в конфигурации первым. Иначе после применения
+                // главным оказывался случайный монитор (например, Dell вместо PHL).
+                var computerKey = state.Computer?.Key;
+
+                return result
+                    .OrderBy(group => OrderRank(TargetKey(group[0]), computerKey, panelKey))
+                    .ThenBy(group => TargetKey(group[0]), StringComparer.OrdinalIgnoreCase)
+                    .ToList();
+            }
+
+            static int OrderRank(string key, string? computerKey, string? panelKey)
+            {
+                if (computerKey is not null
+                    && string.Equals(key, computerKey, StringComparison.OrdinalIgnoreCase))
+                {
+                    return 0;
+                }
+
+                if (panelKey is not null
+                    && string.Equals(key, panelKey, StringComparison.OrdinalIgnoreCase))
+                {
+                    return 2;
+                }
+
+                return 1;
             }
 
             var wanted = BuildWanted(all.Paths);
