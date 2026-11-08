@@ -577,14 +577,20 @@ public sealed class DisplayService
                     var isPanel = panelKey is not null
                                   && string.Equals(monitor.Key, panelKey, StringComparison.OrdinalIgnoreCase);
 
-                    var take = restrictTo is not null
-                        ? restrictTo.Contains(monitor.Key, StringComparer.OrdinalIgnoreCase)
-                        : mode switch
-                        {
-                            DisplayMode.PanelOnly => isPanel,
-                            DisplayMode.ComputerOnly => !isPanel,
-                            _ => true
-                        };
+                    // Пара ограничивает набор мониторов, но режим всё равно решает,
+                    // какие из них включить: иначе «Только компьютер» и «Только панель»
+                    // оставляли оба экрана.
+                    var allowedByPair = restrictTo is null
+                                        || restrictTo.Contains(monitor.Key, StringComparer.OrdinalIgnoreCase);
+
+                    var allowedByMode = mode switch
+                    {
+                        DisplayMode.PanelOnly => isPanel,
+                        DisplayMode.ComputerOnly => !isPanel,
+                        _ => true
+                    };
+
+                    var take = allowedByPair && allowedByMode;
 
                     if (take)
                     {

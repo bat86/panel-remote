@@ -16,6 +16,12 @@ public partial class AdminWindow : Window
         
         var viewModel = new AdminViewModel(controller, settings, log);
         DataContext = viewModel;
+
+        // Окно занимает всю высоту рабочего стола: списков устройств бывает много.
+        var workArea = SystemParameters.WorkArea;
+        Height = workArea.Height - 24;
+        MaxHeight = workArea.Height - 24;
+        Top = workArea.Top + 12;
         
         log.Info("Открыто окно администратора");
     }
