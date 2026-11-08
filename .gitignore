@@ -29,3 +29,6 @@ wineboot.log
 structcheck.log
 screen.png
 desktop-test.png
+
+# локальный тестовый known_hosts
+/.ssh_known_hosts

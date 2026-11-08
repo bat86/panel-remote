@@ -184,11 +184,10 @@ dotnet run --project tests/InteropLayoutChecks/InteropLayoutChecks.csproj
 
 ## Репозиторий
 
-Локальный git-репозиторий уже инициализирован, ветка `main`. Remote не настроен: в окружении не было доступа к GitHub. После получения URL приватного репозитория:
+Проект лежит в приватном репозитории: [https://github.com/bat86/panel-remote](https://github.com/bat86/panel-remote) (ветка `main`).
 
 ```bash
-git remote add origin <URL>
-git push -u origin main
+git clone https://github.com/bat86/panel-remote.git
 ```
 
-Если проект должен быть подпапкой существующего приватного репозитория — скопируйте содержимое этой папки в нужную подпапку. `artifacts/` и локальные журналы в git не попадут.
+`artifacts/` и локальные журналы в git не входят. Если проект нужно перенести подпапкой в другой приватный репозиторий — скопируйте содержимое этой папки туда и закоммитьте.

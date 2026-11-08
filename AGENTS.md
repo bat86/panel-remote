@@ -86,11 +86,11 @@ dotnet run --project tests/InteropLayoutChecks/InteropLayoutChecks.csproj -c Rel
 
 ## Git
 
-Репозиторий инициализируется локально в этой папке. Если remote ещё не настроен:
+Приватный remote уже настроен:
 
-```bash
-git remote add origin <URL-приватного-репозитория>
-git push -u origin main
+```text
+origin  https://github.com/bat86/panel-remote.git
+branch  main
 ```
 
-Если это подпапка существующего приватного репозитория — скопируй содержимое этой папки в нужную подпапку и закоммить оттуда. Архив `artifacts/` в git не входит.
+Если это подпапка другого приватного репозитория — скопируй содержимое этой папки в нужную подпапку и закоммить оттуда. Архив `artifacts/` в git не входит.
