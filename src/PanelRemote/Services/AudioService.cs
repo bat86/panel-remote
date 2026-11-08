@@ -5,6 +5,7 @@ using System.Linq;
 using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading;
+using System.Threading.Tasks;
 using PanelRemote.Interop;
 using PanelRemote.Models;
 
@@ -384,6 +385,66 @@ public sealed class AudioService : IDisposable
                 Detect(panelName, panelConnected, computerName),
                 "Не удалось переключить звук. Подробности записаны в журнал.",
                 null);
+        }
+    }
+
+    /// <summary>
+    /// Проигрывает тестовый звук на конкретном устройстве и возвращает
+    /// прежнее устройство по умолчанию. Нужно для кнопки «Тест» в настройках.
+    /// </summary>
+    public bool PlayTestSoundOnDevice(string endpointId)
+    {
+        if (string.IsNullOrWhiteSpace(endpointId))
+        {
+            return false;
+        }
+
+        try
+        {
+            var before = Detect(null, false, null);
+            var previousId = before.DefaultEndpoint?.Id;
+
+            var policy = (IPolicyConfig)new PolicyConfigClient();
+            var result = policy.SetDefaultEndpoint(endpointId, ERole.eConsole);
+            policy.SetDefaultEndpoint(endpointId, ERole.eMultimedia);
+            policy.SetDefaultEndpoint(endpointId, ERole.eCommunications);
+
+            if (result != 0)
+            {
+                _log.Warn($"Тест звука: не удалось переключиться на {endpointId} (0x{result:X8}).");
+                return false;
+            }
+
+            var played = PlayTestSound();
+            _log.Info($"Тест звука на устройстве {endpointId}: {(played ? "отправлен" : "не удался")}.");
+
+            if (!string.IsNullOrWhiteSpace(previousId)
+                && !string.Equals(previousId, endpointId, StringComparison.OrdinalIgnoreCase))
+            {
+                _ = Task.Run(async () =>
+                {
+                    try
+                    {
+                        await Task.Delay(2200).ConfigureAwait(false);
+                        var restore = (IPolicyConfig)new PolicyConfigClient();
+                        restore.SetDefaultEndpoint(previousId, ERole.eConsole);
+                        restore.SetDefaultEndpoint(previousId, ERole.eMultimedia);
+                        restore.SetDefaultEndpoint(previousId, ERole.eCommunications);
+                        _log.Info("Тест звука: вернул прежнее устройство по умолчанию.");
+                    }
+                    catch (Exception ex)
+                    {
+                        _log.Warn("Тест звука: не удалось вернуть устройство — " + ex.Message);
+                    }
+                });
+            }
+
+            return played;
+        }
+        catch (Exception ex)
+        {
+            _log.Error("Ошибка теста звука на устройстве", ex);
+            return false;
         }
     }
 

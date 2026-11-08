@@ -165,7 +165,7 @@ public sealed class AdminViewModel : ObservableObject
                     }
                 }
 
-                AudioItems.Add(new AudioItemViewModel(endpoint, role, OnAudioRoleChanged));
+                AudioItems.Add(new AudioItemViewModel(endpoint, role, OnAudioRoleChanged, TestAudioAsync));
             }
             
             OnPropertyChanged(nameof(SelectionSummary));
@@ -349,6 +349,17 @@ public sealed class AdminViewModel : ObservableObject
                    || string.Equals(display.ConnectionName, mapping.ConnectionType, StringComparison.OrdinalIgnoreCase));
     }
 
+    private async Task TestAudioAsync(AudioEndpointInfo endpoint)
+    {
+        StatusMessage = $"Проверяю звук: {endpoint.DisplayName}…";
+
+        var ok = await _controller.TestAudioOnDeviceAsync(endpoint.Id).ConfigureAwait(true);
+
+        StatusMessage = ok
+            ? $"Пикнул на «{endpoint.DisplayName}». Если не слышно — проверьте громкость и кабель."
+            : $"Не удалось проиграть звук на «{endpoint.DisplayName}».";
+    }
+
     private void OnDisplayRoleChanged(DisplayItemViewModel changed)
     {
         if (changed.Role != DisplayRole.None)
@@ -462,12 +473,26 @@ public sealed class AudioItemViewModel : ObservableObject
     private AudioRole _role;
     private readonly Action<AudioItemViewModel>? _changed;
 
-    public AudioItemViewModel(AudioEndpointInfo endpoint, AudioRole role, Action<AudioItemViewModel>? changed = null)
+    public AudioItemViewModel(
+        AudioEndpointInfo endpoint,
+        AudioRole role,
+        Action<AudioItemViewModel>? changed = null,
+        Func<AudioEndpointInfo, Task>? test = null)
     {
         Endpoint = endpoint;
         _role = role;
         _changed = changed;
+        TestCommand = new AsyncRelayCommand(async () =>
+        {
+            if (test is not null)
+            {
+                await test(Endpoint);
+            }
+        });
     }
+
+    /// <summary>Кнопка «Тест»: пикает на этом устройстве, даже если оно не выбрано.</summary>
+    public ICommand TestCommand { get; }
     
     public AudioEndpointInfo Endpoint { get; }
     

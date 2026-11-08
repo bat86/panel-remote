@@ -1253,14 +1253,11 @@ public sealed class DisplayService
             }
         }
         
-        // Автоопределение. Панелью может быть любой порт, но основной
-        // DisplayPort-монитор панелью не считается: иначе, когда панель
-        // отключена, ею назначался главный экран и «Только компьютер» его гасил.
+        // Панелью может быть экран на любом порту. Приоритет задают баллы:
+        // HDMI/USB-C и «панельные» имена выше, основной экран получает штраф,
+        // поэтому главный монитор панелью не становится без нужды.
         var candidates = targets
             .Where(t => t.Available && !t.IsInternal)
-            .Where(t => t.Connection is DisplayConnectionKind.Hdmi or DisplayConnectionKind.UsbC
-                        || !t.IsPrimary
-                        || LooksLikePanel(t.FriendlyName))
             .ToList();
 
         if (candidates.Count == 0)

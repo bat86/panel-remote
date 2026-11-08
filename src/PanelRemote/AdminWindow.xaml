@@ -203,6 +203,16 @@
                                     <StackPanel Grid.Column="1" 
                                                 Orientation="Horizontal"
                                                 VerticalAlignment="Center">
+                                        <Button Content="Тест"
+                                                Command="{Binding TestCommand}"
+                                                Padding="12,8"
+                                                Margin="4"
+                                                Background="#FFFFFF"
+                                                BorderBrush="#CCCCCC"
+                                                BorderThickness="2"
+                                                FontWeight="SemiBold"
+                                                Cursor="Hand"
+                                                ToolTip="Проиграть звук на этом устройстве" />
                                         <RadioButton Content="Панель"
                                                      GroupName="{Binding Endpoint.Id}"
                                                      IsChecked="{Binding Role, Converter={StaticResource EnumToBoolConverter}, ConverterParameter=Panel}"

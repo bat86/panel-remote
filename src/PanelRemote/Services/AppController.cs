@@ -152,6 +152,10 @@ public sealed class AppController : IDisposable
         }
     }
 
+    /// <summary>Проигрывает тестовый звук на указанном устройстве (кнопка «Тест»).</summary>
+    public Task<bool> TestAudioOnDeviceAsync(string endpointId)
+        => Task.Run(() => _audio.PlayTestSoundOnDevice(endpointId));
+
     public async Task<AudioApplyResult> SetAudioTargetAsync(
         AudioTarget target,
         bool savePreference = true)
