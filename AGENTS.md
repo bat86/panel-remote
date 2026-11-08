@@ -1,6 +1,6 @@
 # AGENTS.md — «Пульт доски»
 
-Этот файл — краткая точка входа для следующего агента/разработчика. Полный контекст и история решений: [docs/HANDOFF.md](docs/HANDOFF.md), [docs/TECHNICAL.md](docs/TECHNICAL.md), [docs/TEST-STATUS.md](docs/TEST-STATUS.md).
+Этот файл — краткая точка входа для следующего агента/разработчика. Если работа идёт на Windows впервые: [docs/WINDOWS-START.md](docs/WINDOWS-START.md). Полный контекст и история решений: [docs/HANDOFF.md](docs/HANDOFF.md), [docs/TECHNICAL.md](docs/TECHNICAL.md), [docs/TEST-STATUS.md](docs/TEST-STATUS.md).
 
 ## Что это
 
@@ -27,7 +27,13 @@ Windows-приложение для школы: компьютер препод�
 
 ## Команды
 
-Windows:
+Windows, разработка (сборка + запуск с `--portable`):
+
+```bat
+dev-run.cmd
+```
+
+Windows, чистая сборка релиза:
 
 ```bat
 build.cmd
@@ -60,8 +66,10 @@ dotnet run --project tests/InteropLayoutChecks/InteropLayoutChecks.csproj -c Rel
 | `src/PanelRemote/Interop/DisplayConfigNative.cs` | P/Invoke CCD, структуры и флаги |
 | `src/PanelRemote/Interop/AudioNative.cs` | COM-контракты Core Audio/IPolicyConfig |
 | `tests/InteropLayoutChecks` | регрессия размеров структур и флагов CCD |
+| `docs/WINDOWS-START.md` | пошаговая инструкция для первого запуска на Windows |
 | `docs/HANDOFF.md` | что было сделано, что осталось, как это проверялось |
 | `docs/TEST-STATUS.md` | честная матрица проверок |
+| `docs/AI-CONTEXT-PROMPT.md` | готовый промпт для нового чата |
 | `.github/workflows/build.yml` | CI: Windows build + Linux cross-check |
 
 ## Ловушки, которые уже исправлены — не сломай обратно
@@ -82,7 +90,7 @@ dotnet run --project tests/InteropLayoutChecks/InteropLayoutChecks.csproj -c Rel
 4. Проверить смену default audio на Windows 10 и 11 (IPolicyConfig — недокументированный API).
 5. Проверить 1366×768 и 1920×1080, масштаб 100%/125%.
 6. Подписать EXE сертификатом для школы (SmartScreen).
-7. При наличии GitHub remote — запушить `main`; CI соберёт артефакт на Windows.
+7. После правок запушить `main`; CI соберёт артефакт на Windows.
 
 ## Git
 

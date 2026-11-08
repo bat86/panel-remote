@@ -116,7 +116,7 @@ artifacts/PanelRemote-win-x64.zip
 - DPI 125%/150%, 1366×768, реальная панель.
 - SmartScreen/антивирус и подпись.
 
-Подробная матрица: [TEST-STATUS.md](TEST-STATUS.md). Чек-лист для железа: [TEST-CHECKLIST.md](TEST-CHECKLIST.md).
+Подробная матрица: [TEST-STATUS.md](TEST-STATUS.md). Чек-лист для железа: [TEST-CHECKLIST.md](TEST-CHECKLIST.md). Инструкция для первого запуска на Windows: [WINDOWS-START.md](WINDOWS-START.md). Шаблон для нового AI-чата: [AI-CONTEXT-PROMPT.md](AI-CONTEXT-PROMPT.md).
 
 ## Известные ограничения и риски
 
@@ -132,7 +132,13 @@ artifacts/PanelRemote-win-x64.zip
 
 ### Сборка
 
-Windows:
+Windows, быстрый цикл разработки:
+
+```bat
+dev-run.cmd
+```
+
+Чистая сборка:
 
 ```bat
 build.cmd

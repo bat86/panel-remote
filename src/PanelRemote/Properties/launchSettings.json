@@ -1,0 +1,8 @@
+{
+  "profiles": {
+    "PanelRemote (portable)": {
+      "commandName": "Project",
+      "commandLineArgs": "--portable"
+    }
+  }
+}

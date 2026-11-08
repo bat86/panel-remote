@@ -8,6 +8,8 @@ Windows-приложение для школы: компьютер препод�
 
 *Макет 1:1; реальное WPF-окно использует ту же сетку и цвета.*
 
+> **Первый раз на Windows?** Начни с [docs/WINDOWS-START.md](docs/WINDOWS-START.md) — там установка, `dev-run.cmd`, отладка, git и готовый промпт для нового чата.
+
 > **Статус:** код собирается на Windows в GitHub Actions, ABI-структуры и установка проверены. На реальной Windows с интерактивной панелью приложение ещё не прогонялось — см. [docs/TEST-STATUS.md](docs/TEST-STATUS.md) и [docs/TEST-CHECKLIST.md](docs/TEST-CHECKLIST.md).
 
 ## Что умеет
@@ -113,7 +115,8 @@ src/PanelRemote/
 
 tests/InteropLayoutChecks/ ABI-регрессия native-структур и флагов CCD
 scripts/                   build-release.sh, generate-icon.py
-docs/                      техническое описание, handoff, тест-чек-лист
+dev-run.cmd                сборка + запуск с --portable для разработки
+docs/                      инструкция, handoff, тест-чек-лист, AI-промпт
 preview/                   макеты UI (не скриншоты WPF)
 artifacts/                 локальная сборка EXE/ZIP, в git не попадает
 ```
@@ -121,16 +124,26 @@ artifacts/                 локальная сборка EXE/ZIP, в git не 
 Стек: **C# + WPF, .NET 8, win-x64, self-contained single-file**. WPF выбран потому, что он входит в Windows desktop stack, даёт крупный контрастный интерфейс и трей без сторонних библиотек, а все нужные Win32-вызовы доступны через P/Invoke/COM. Подробности — в [docs/TECHNICAL.md](docs/TECHNICAL.md).
 
 Документы для передачи:
+- [docs/WINDOWS-START.md](docs/WINDOWS-START.md) — пошагово для первого запуска на Windows;
 - [AGENTS.md](AGENTS.md) — краткая инструкция следующему агенту;
 - [docs/HANDOFF.md](docs/HANDOFF.md) — что делалось, как проверялось и что осталось;
 - [docs/TEST-STATUS.md](docs/TEST-STATUS.md) — честная матрица проверок;
-- [docs/TEST-CHECKLIST.md](docs/TEST-CHECKLIST.md) — приёмка на панели.
+- [docs/TEST-CHECKLIST.md](docs/TEST-CHECKLIST.md) — приёмка на панели;
+- [docs/AI-CONTEXT-PROMPT.md](docs/AI-CONTEXT-PROMPT.md) — шаблон для нового чата.
 
 ## Сборка
 
 Нужен .NET SDK 8.
 
-На Windows:
+На Windows для разработки:
+
+```bat
+dev-run.cmd
+```
+
+Он собирает свежий EXE и запускает его с `--portable`, чтобы не прописывать автозапуск.
+
+Чистая сборка релиза:
 
 ```bat
 build.cmd
