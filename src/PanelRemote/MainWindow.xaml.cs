@@ -16,6 +16,7 @@ public partial class MainWindow : Window
 {
     private const int HotkeyDuplicate = 0x5001;
     private const int HotkeyPanelSound = 0x5002;
+    private const int HotkeyAdmin = 0x5003;
     private const uint ModNoRepeat = 0x4000;
     private const int WM_POWERBROADCAST = 0x0218;
     private const int PBT_APMRESUMESUSPEND = 0x0007;
@@ -38,6 +39,7 @@ public partial class MainWindow : Window
     private bool _reallyExit;
     private bool _hotkeyDuplicateRegistered;
     private bool _hotkeySoundRegistered;
+    private bool _hotkeyAdminRegistered;
     private bool _refreshing;
 
     public MainWindow(
@@ -171,6 +173,11 @@ public partial class MainWindow : Window
                 HotkeyPanelSound,
                 ModNoRepeat,
                 NativeMethods.VK_F9);
+            _hotkeyAdminRegistered = NativeMethods.RegisterHotKey(
+                _hwnd,
+                HotkeyAdmin,
+                ModNoRepeat | NativeMethods.MOD_CONTROL | NativeMethods.MOD_SHIFT,
+                NativeMethods.VK_A);
 
             if (!_hotkeyDuplicateRegistered)
             {
@@ -182,9 +189,19 @@ public partial class MainWindow : Window
                 _log.Warn("Не удалось зарегистрировать глобальную клавишу F9 (возможно, занята).");
             }
 
+            if (!_hotkeyAdminRegistered)
+            {
+                _log.Warn("Не удалось зарегистрировать горячую клавишу Ctrl+Shift+A для администратора (возможно, занята).");
+            }
+
             if (_hotkeyDuplicateRegistered || _hotkeySoundRegistered)
             {
                 _log.Info("Глобальные клавиши: F8 — дублировать, F9 — звук на панель.");
+            }
+            
+            if (_hotkeyAdminRegistered)
+            {
+                _log.Info("Горячая клавиша администратора: Ctrl+Shift+A — настройки устройств.");
             }
         }
         catch (Exception ex)
@@ -215,6 +232,11 @@ public partial class MainWindow : Window
             else if (id == HotkeyPanelSound)
             {
                 Dispatcher.BeginInvoke(new Action(_viewModel.ExecutePanelAudioShortcut));
+                handled = true;
+            }
+            else if (id == HotkeyAdmin)
+            {
+                Dispatcher.BeginInvoke(new Action(OpenAdminWindow));
                 handled = true;
             }
 
@@ -342,12 +364,16 @@ public partial class MainWindow : Window
             };
             _topmostMenuItem.CheckedChanged += TopmostMenuItem_CheckedChanged;
 
+            var adminItem = new Forms.ToolStripMenuItem("Настройки администратора (Ctrl+Shift+A)");
+            adminItem.Click += (_, _) => Dispatcher.BeginInvoke(new Action(OpenAdminWindow));
+
             var exitItem = new Forms.ToolStripMenuItem("Выход");
             exitItem.Click += (_, _) => ExitApplication();
 
             menu.Items.Add(openItem);
             menu.Items.Add(new Forms.ToolStripSeparator());
             menu.Items.Add(_topmostMenuItem);
+            menu.Items.Add(adminItem);
             menu.Items.Add(new Forms.ToolStripSeparator());
             menu.Items.Add(exitItem);
 
@@ -436,6 +462,11 @@ public partial class MainWindow : Window
             NativeMethods.UnregisterHotKey(_hwnd, HotkeyPanelSound);
         }
 
+        if (_hotkeyAdminRegistered)
+        {
+            NativeMethods.UnregisterHotKey(_hwnd, HotkeyAdmin);
+        }
+
         _hwndSource?.RemoveHook(WndProc);
         _hwndSource = null;
 
@@ -453,6 +484,38 @@ public partial class MainWindow : Window
 
         _windowIcon = null;
         _log.Info("Главное окно закрыто.");
+    }
+
+    private void OpenAdminWindow()
+    {
+        try
+        {
+            _log.Info("Открытие окна администратора по горячей клавише Ctrl+Shift+A");
+            
+            // Получаем необходимые зависимости из App
+            var app = System.Windows.Application.Current as App;
+            if (app == null)
+            {
+                _log.Error("Не удалось получить экземпляр приложения");
+                return;
+            }
+            
+            // Создаём и показываем окно администратора
+            // Передаём AppController через доступ к MainViewModel
+            var controller = _viewModel.GetController();
+            var adminWindow = new AdminWindow(controller, _settings, _log);
+            adminWindow.Owner = this;
+            adminWindow.ShowDialog();
+        }
+        catch (Exception ex)
+        {
+            _log.Error("Ошибка при открытии окна администратора", ex);
+            MessageBox.Show(
+                "Не удалось открыть окно администратора.\n\n" + ex.Message,
+                "Пульт доски",
+                MessageBoxButton.OK,
+                MessageBoxImage.Error);
+        }
     }
 
     private void ExitApplication()

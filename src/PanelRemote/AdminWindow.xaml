@@ -1,0 +1,249 @@
+<Window x:Class="PanelRemote.AdminWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:vm="clr-namespace:PanelRemote.ViewModels"
+        xmlns:infra="clr-namespace:PanelRemote.Infrastructure"
+        mc:Ignorable="d"
+        Title="Настройки администратора — Пульт доски"
+        Width="1000" Height="700"
+        MinWidth="800" MinHeight="600"
+        WindowStartupLocation="CenterScreen"
+        Background="#F5F5F5"
+        FontFamily="Segoe UI"
+        FontSize="14">
+    
+    <Window.Resources>
+        <!-- Конвертер для enum в RadioButton -->
+        <infra:EnumToBoolConverter x:Key="EnumToBoolConverter"/>
+        
+        <!-- Стиль для RadioButton как плитки -->
+        <Style x:Key="RoleRadioButton" TargetType="RadioButton">
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="RadioButton">
+                        <Border Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}"
+                                CornerRadius="4"
+                                Padding="12,8">
+                            <ContentPresenter HorizontalAlignment="Center" 
+                                            VerticalAlignment="Center"/>
+                        </Border>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+            <Setter Property="Background" Value="#FFFFFF"/>
+            <Setter Property="BorderBrush" Value="#CCCCCC"/>
+            <Setter Property="BorderThickness" Value="2"/>
+            <Setter Property="Padding" Value="12,8"/>
+            <Setter Property="Margin" Value="4"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Style.Triggers>
+                <Trigger Property="IsChecked" Value="True">
+                    <Setter Property="Background" Value="#0078D4"/>
+                    <Setter Property="Foreground" Value="White"/>
+                    <Setter Property="BorderBrush" Value="#0078D4"/>
+                </Trigger>
+                <Trigger Property="IsMouseOver" Value="True">
+                    <Setter Property="BorderBrush" Value="#0078D4"/>
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+    </Window.Resources>
+    
+    <Grid Margin="20">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+        
+        <!-- Заголовок -->
+        <TextBlock Grid.Row="0" 
+                   Text="Настройки администратора"
+                   FontSize="28" FontWeight="Bold"
+                   Foreground="#333333"
+                   Margin="0,0,0,10"/>
+        
+        <!-- Предупреждение -->
+        <Border Grid.Row="1" 
+                Background="#FFF4CE" 
+                BorderBrush="#FFD700" 
+                BorderThickness="1" 
+                CornerRadius="4"
+                Padding="12"
+                Margin="0,0,0,20">
+            <StackPanel>
+                <TextBlock FontWeight="Bold" Foreground="#856404" Margin="0,0,0,4">
+                    ⚠️ Для технических специалистов
+                </TextBlock>
+                <TextBlock TextWrapping="Wrap" Foreground="#856404">
+                    Используйте эти настройки только если автоопределение не работает.
+                    По умолчанию приложение автоматически находит панель и аудиоустройства.
+                </TextBlock>
+            </StackPanel>
+        </Border>
+        
+        <!-- Режим конфигурации -->
+        <StackPanel Grid.Row="2" Margin="0,0,0,20">
+            <CheckBox IsChecked="{Binding UseManualConfiguration}"
+                      FontSize="16" FontWeight="SemiBold">
+                <TextBlock Text="Использовать ручную настройку устройств"
+                           TextWrapping="Wrap"/>
+            </CheckBox>
+            <TextBlock Margin="28,4,0,0" 
+                       Foreground="#666666" 
+                       TextWrapping="Wrap"
+                       FontSize="13">
+                Снимите галочку для возврата к автоматическому определению устройств
+            </TextBlock>
+        </StackPanel>
+        
+        <!-- Список дисплеев -->
+        <GroupBox Grid.Row="3" Header="Дисплеи" Padding="10" Margin="0,0,0,10">
+            <ScrollViewer VerticalScrollBarVisibility="Auto">
+                <ItemsControl ItemsSource="{Binding DisplayItems}">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate>
+                            <Border Background="White" 
+                                    BorderBrush="#DDDDDD" 
+                                    BorderThickness="1" 
+                                    CornerRadius="4"
+                                    Padding="12"
+                                    Margin="0,0,0,8">
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                    </Grid.ColumnDefinitions>
+                                    
+                                    <TextBlock Grid.Column="0" 
+                                               Text="{Binding DisplayInfo}"
+                                               VerticalAlignment="Center"
+                                               TextWrapping="Wrap"
+                                               Foreground="#333333"/>
+                                    
+                                    <StackPanel Grid.Column="1" 
+                                                Orientation="Horizontal"
+                                                VerticalAlignment="Center">
+                                        <RadioButton Content="Панель"
+                                                     GroupName="{Binding Display.Key}"
+                                                     IsChecked="{Binding Role, Converter={StaticResource EnumToBoolConverter}, ConverterParameter=Panel}"
+                                                     Style="{StaticResource RoleRadioButton}"/>
+                                        <RadioButton Content="Компьютер"
+                                                     GroupName="{Binding Display.Key}"
+                                                     IsChecked="{Binding Role, Converter={StaticResource EnumToBoolConverter}, ConverterParameter=Computer}"
+                                                     Style="{StaticResource RoleRadioButton}"/>
+                                        <RadioButton Content="—"
+                                                     GroupName="{Binding Display.Key}"
+                                                     IsChecked="{Binding Role, Converter={StaticResource EnumToBoolConverter}, ConverterParameter=None}"
+                                                     Style="{StaticResource RoleRadioButton}"
+                                                     ToolTip="Не использовать"/>
+                                    </StackPanel>
+                                </Grid>
+                            </Border>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+            </ScrollViewer>
+        </GroupBox>
+        
+        <!-- Разделитель -->
+        <Border Grid.Row="4" Height="1" Background="#DDDDDD" Margin="0,10"/>
+        
+        <!-- Список аудиоустройств -->
+        <GroupBox Grid.Row="5" Header="Аудиоустройства" Padding="10" Margin="0,10,0,10">
+            <ScrollViewer VerticalScrollBarVisibility="Auto">
+                <ItemsControl ItemsSource="{Binding AudioItems}">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate>
+                            <Border Background="White" 
+                                    BorderBrush="#DDDDDD" 
+                                    BorderThickness="1" 
+                                    CornerRadius="4"
+                                    Padding="12"
+                                    Margin="0,0,0,8">
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                    </Grid.ColumnDefinitions>
+                                    
+                                    <TextBlock Grid.Column="0" 
+                                               Text="{Binding AudioInfo}"
+                                               VerticalAlignment="Center"
+                                               TextWrapping="Wrap"
+                                               Foreground="#333333"/>
+                                    
+                                    <StackPanel Grid.Column="1" 
+                                                Orientation="Horizontal"
+                                                VerticalAlignment="Center">
+                                        <RadioButton Content="Панель"
+                                                     GroupName="{Binding Endpoint.Id}"
+                                                     IsChecked="{Binding Role, Converter={StaticResource EnumToBoolConverter}, ConverterParameter=Panel}"
+                                                     Style="{StaticResource RoleRadioButton}"/>
+                                        <RadioButton Content="Компьютер"
+                                                     GroupName="{Binding Endpoint.Id}"
+                                                     IsChecked="{Binding Role, Converter={StaticResource EnumToBoolConverter}, ConverterParameter=Computer}"
+                                                     Style="{StaticResource RoleRadioButton}"/>
+                                        <RadioButton Content="—"
+                                                     GroupName="{Binding Endpoint.Id}"
+                                                     IsChecked="{Binding Role, Converter={StaticResource EnumToBoolConverter}, ConverterParameter=None}"
+                                                     Style="{StaticResource RoleRadioButton}"
+                                                     ToolTip="Не использовать"/>
+                                    </StackPanel>
+                                </Grid>
+                            </Border>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+            </ScrollViewer>
+        </GroupBox>
+        
+        <!-- Статус -->
+        <TextBlock Grid.Row="6" 
+                   Text="{Binding StatusMessage}"
+                   Foreground="#0078D4"
+                   FontSize="13"
+                   Margin="0,10"
+                   TextWrapping="Wrap"/>
+        
+        <!-- Кнопки -->
+        <StackPanel Grid.Row="7" 
+                    Orientation="Horizontal" 
+                    HorizontalAlignment="Right"
+                    Margin="0,10,0,0">
+            <Button Content="Обновить список"
+                    Command="{Binding RefreshCommand}"
+                    Padding="20,10"
+                    Margin="0,0,10,0"
+                    Background="White"
+                    BorderBrush="#CCCCCC"
+                    Cursor="Hand"/>
+            <Button Content="Вернуть автоопределение"
+                    Command="{Binding ResetToAutoCommand}"
+                    Padding="20,10"
+                    Margin="0,0,10,0"
+                    Background="#FFC107"
+                    Foreground="White"
+                    BorderThickness="0"
+                    Cursor="Hand"/>
+            <Button Content="Сохранить конфигурацию"
+                    Command="{Binding SaveCommand}"
+                    Padding="20,10"
+                    Background="#28A745"
+                    Foreground="White"
+                    BorderThickness="0"
+                    FontWeight="Bold"
+                    Cursor="Hand"/>
+        </StackPanel>
+    </Grid>
+</Window>

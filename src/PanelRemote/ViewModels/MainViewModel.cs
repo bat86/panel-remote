@@ -574,4 +574,12 @@ public sealed class MainViewModel : ObservableObject
         (CloseDiagnosticsCommand as RelayCommand)?.RaiseCanExecuteChanged();
         (OpenLogsCommand as RelayCommand)?.RaiseCanExecuteChanged();
     }
+
+    /// <summary>
+    /// Возвращает AppController для использования в окне администратора.
+    /// </summary>
+    public AppController GetController()
+    {
+        return _controller;
+    }
 }

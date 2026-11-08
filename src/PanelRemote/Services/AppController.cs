@@ -474,6 +474,49 @@ public sealed class AppController : IDisposable
         var items = new List<DiagnosticItem>();
         var hasProblems = false;
 
+        // Информация о конфигурации устройств
+        var adminConfig = _settings.Current.AdminConfig;
+        if (adminConfig?.UseManualConfiguration == true)
+        {
+            items.Add(new DiagnosticItem(
+                DiagnosticSeverity.Info,
+                "⚙️ Используется ручная настройка устройств (режим администратора)."));
+            
+            if (adminConfig.PanelDisplayOverride != null)
+            {
+                items.Add(new DiagnosticItem(
+                    DiagnosticSeverity.Info,
+                    $"  Панель: {adminConfig.PanelDisplayOverride.DisplayFriendlyName} ({adminConfig.PanelDisplayOverride.ConnectionType})"));
+            }
+            
+            if (adminConfig.ComputerDisplayOverride != null)
+            {
+                items.Add(new DiagnosticItem(
+                    DiagnosticSeverity.Info,
+                    $"  Компьютер: {adminConfig.ComputerDisplayOverride.DisplayFriendlyName} ({adminConfig.ComputerDisplayOverride.ConnectionType})"));
+            }
+            
+            if (!string.IsNullOrWhiteSpace(adminConfig.PanelAudioEndpointIdOverride))
+            {
+                items.Add(new DiagnosticItem(
+                    DiagnosticSeverity.Info,
+                    $"  Аудио панели: настроено вручную"));
+            }
+            
+            if (!string.IsNullOrWhiteSpace(adminConfig.ComputerAudioEndpointIdOverride))
+            {
+                items.Add(new DiagnosticItem(
+                    DiagnosticSeverity.Info,
+                    $"  Аудио компьютера: настроено вручную"));
+            }
+        }
+        else
+        {
+            items.Add(new DiagnosticItem(
+                DiagnosticSeverity.Info,
+                "🔍 Используется автоматическое определение устройств."));
+        }
+
         if (display.Panel is null)
         {
             items.Add(new DiagnosticItem(DiagnosticSeverity.Error, "Кабель не подключён: Windows не видит ни одного внешнего экрана."));

@@ -25,11 +25,13 @@ public sealed class DisplayService
     };
 
     private readonly AppLog _log;
+    private readonly SettingsStore _settings;
     private readonly object _gate = new();
 
-    public DisplayService(AppLog log)
+    public DisplayService(AppLog log, SettingsStore settings)
     {
         _log = log;
+        _settings = settings;
     }
 
     public DisplaySnapshot Detect()
@@ -760,6 +762,27 @@ public sealed class DisplayService
 
     private DisplayTargetInfo? SelectPanel(List<DisplayTargetInfo> targets)
     {
+        // Проверяем административную конфигурацию
+        var adminConfig = _settings.Current.AdminConfig;
+        if (adminConfig?.UseManualConfiguration == true 
+            && adminConfig.PanelDisplayOverride is not null)
+        {
+            var manualPanel = targets.FirstOrDefault(t => 
+                t.Key == adminConfig.PanelDisplayOverride.DisplayKey);
+            
+            if (manualPanel is not null)
+            {
+                _log.Info($"Используется ручная настройка панели: {manualPanel.DisplayName} ({manualPanel.ConnectionName})");
+                return manualPanel;
+            }
+            else
+            {
+                _log.Warn($"Ручная настройка панели не найдена: {adminConfig.PanelDisplayOverride.DisplayFriendlyName}. " +
+                          "Переключаюсь на автоопределение.");
+            }
+        }
+        
+        // Автоопределение (существующая логика)
         var candidates = targets
             .Where(t => t.Available && !t.IsInternal)
             .ToList();
@@ -819,8 +842,29 @@ public sealed class DisplayService
         return score;
     }
 
-    private static DisplayTargetInfo? SelectComputer(List<DisplayTargetInfo> targets, DisplayTargetInfo? panel)
+    private DisplayTargetInfo? SelectComputer(List<DisplayTargetInfo> targets, DisplayTargetInfo? panel)
     {
+        // Проверяем административную конфигурацию
+        var adminConfig = _settings.Current.AdminConfig;
+        if (adminConfig?.UseManualConfiguration == true 
+            && adminConfig.ComputerDisplayOverride is not null)
+        {
+            var manualComputer = targets.FirstOrDefault(t => 
+                t.Key == adminConfig.ComputerDisplayOverride.DisplayKey);
+            
+            if (manualComputer is not null)
+            {
+                _log.Info($"Используется ручная настройка компьютера: {manualComputer.DisplayName} ({manualComputer.ConnectionName})");
+                return manualComputer;
+            }
+            else
+            {
+                _log.Warn($"Ручная настройка компьютера не найдена: {adminConfig.ComputerDisplayOverride.DisplayFriendlyName}. " +
+                          "Переключаюсь на автоопределение.");
+            }
+        }
+        
+        // Автоопределение (существующая логика)
         var available = targets.Where(t => t.Available).ToList();
         var internalCandidates = available
             .Where(t => t.IsInternal)

@@ -91,16 +91,18 @@ public partial class App : Application
         var settings = new SettingsStore(_log);
         settings.Load();
 
-        var display = new DisplayService(_log);
-        var audio = new AudioService(_log);
+        var display = new DisplayService(_log, settings);
+        var audio = new AudioService(_log, settings);
         _controller = new AppController(display, audio, settings, _log);
         var viewModel = new MainViewModel(_controller, _log);
 
         var startHidden = args.Contains("--tray") || args.Contains("--autostart");
+        var openAdmin = args.Contains("--admin");
+        
         _mainWindow = new MainWindow(viewModel, settings, _log, startHidden);
         MainWindow = _mainWindow;
 
-        _log.Info($"Режим запуска: {(startHidden ? "в трее" : "с окном")}, portable={portable}.");
+        _log.Info($"Режим запуска: {(startHidden ? "в трее" : "с окном")}, portable={portable}, admin={openAdmin}.");
         _mainWindow.Show();
 
         Dispatcher.BeginInvoke(
@@ -109,6 +111,15 @@ public partial class App : Application
                 try
                 {
                     await _controller.InitializeAsync();
+                    
+                    // Открываем окно администратора, если был передан параметр --admin
+                    if (openAdmin)
+                    {
+                        _log?.Info("Открытие окна администратора по параметру --admin");
+                        var adminWindow = new AdminWindow(_controller, settings, _log);
+                        adminWindow.Owner = _mainWindow;
+                        adminWindow.ShowDialog();
+                    }
                 }
                 catch (Exception ex)
                 {

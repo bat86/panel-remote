@@ -25,6 +25,21 @@ Windows-приложение для школы: компьютер препод�
 - Не добавляй сторонние NuGet-пакеты без необходимости. Сейчас зависимостей нет.
 - Не коммить `artifacts/`, `bin/`, `obj/`, логи, `.exe`, `.zip`.
 
+## Режим администратора (добавлен 2026-11-08)
+
+Реализован для случаев, когда автоопределение панели/звука не работает (несколько внешних мониторов, нестандартные HDMI-аудио). Три способа открыть:
+- **Ctrl+Shift+A** (глобальная горячая клавиша)
+- Трей-меню → "Настройки администратора"
+- `PanelRemote.exe --admin`
+
+Окно администратора (`AdminWindow.xaml`) позволяет вручную выбрать:
+- Какой дисплей является панелью, а какой — компьютером
+- Какие аудиоустройства использовать для панели и компьютера
+
+Настройки сохраняются в `settings.json` (поле `AdminConfig`). Если выбранное устройство не найдено — fallback на автоопределение с предупреждением. Диагностика показывает источник конфигурации (авто/ручной) и выбранные устройства.
+
+**Важно:** ручная настройка — крайняя мера. Основной сценарий — автоопределение. Не переделывай главный UI под ручную настройку.
+
 ## Команды
 
 Windows, разработка (сборка + запуск с `--portable`):
@@ -58,13 +73,17 @@ dotnet run --project tests/InteropLayoutChecks/InteropLayoutChecks.csproj -c Rel
 | Путь | Что делать здесь |
 |---|---|
 | `src/PanelRemote/MainWindow.xaml` | главный экран: 7 кнопок, статус, диагностический оверлей |
+| `src/PanelRemote/AdminWindow.xaml` | окно администратора: ручной выбор панели/компьютера и аудио |
+| `src/PanelRemote/ViewModels/AdminViewModel.cs` | логика окна администратора, сохранение ручной конфигурации |
 | `src/PanelRemote/Controls/ActionTile.xaml` | огромная кнопка, активное/primary/диагностическое состояние |
 | `src/PanelRemote/Services/DisplayService.cs` | CCD: детект панели, 4 режима, fallback, общий режим клона |
 | `src/PanelRemote/Services/AudioService.cs` | Core Audio: MMDevice, IPolicyConfig, тестовый звук |
 | `src/PanelRemote/Services/AppController.cs` | сценарии, восстановление после reconnect, диагностика |
 | `src/PanelRemote/Services/InstallService.cs` | установка в профиль, автозапуск, ярлыки |
+| `src/PanelRemote/Services/SettingsStore.cs` | JSON-настройки, включая AdminConfig для ручной конфигурации |
 | `src/PanelRemote/Interop/DisplayConfigNative.cs` | P/Invoke CCD, структуры и флаги |
 | `src/PanelRemote/Interop/AudioNative.cs` | COM-контракты Core Audio/IPolicyConfig |
+| `src/PanelRemote/Infrastructure/EnumToBoolConverter.cs` | конвертер для RadioButton в AdminWindow |
 | `tests/InteropLayoutChecks` | регрессия размеров структур и флагов CCD |
 | `docs/WINDOWS-START.md` | пошаговая инструкция для первого запуска на Windows |
 | `docs/HANDOFF.md` | что было сделано, что осталось, как это проверялось |

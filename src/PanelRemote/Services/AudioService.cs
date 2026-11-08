@@ -18,6 +18,7 @@ namespace PanelRemote.Services;
 public sealed class AudioService : IDisposable
 {
     private readonly AppLog _log;
+    private readonly SettingsStore _settings;
     private readonly object _gate = new();
     private readonly object _soundGate = new();
     private IMMDeviceEnumerator? _monitorEnumerator;
@@ -27,9 +28,10 @@ public sealed class AudioService : IDisposable
     private bool _disposed;
     private string _lastLoggedFingerprint = string.Empty;
 
-    public AudioService(AppLog log)
+    public AudioService(AppLog log, SettingsStore settings)
     {
         _log = log;
+        _settings = settings;
     }
 
     public event EventHandler? DevicesChanged;
@@ -143,18 +145,61 @@ public sealed class AudioService : IDisposable
                     return EmptySnapshot();
                 }
 
-                var panel = panelConnected
-                    ? raw.Where(e => e.IsPanelCandidate)
+                // Проверяем административную конфигурацию
+                RawEndpoint? panel = null;
+                RawEndpoint? computer = null;
+                
+                var adminConfig = _settings.Current.AdminConfig;
+                if (adminConfig?.UseManualConfiguration == true)
+                {
+                    // Ручной выбор аудио панели
+                    if (!string.IsNullOrWhiteSpace(adminConfig.PanelAudioEndpointIdOverride))
+                    {
+                        panel = raw.FirstOrDefault(e => e.Id == adminConfig.PanelAudioEndpointIdOverride);
+                        if (panel is not null)
+                        {
+                            _log.Info($"Используется ручная настройка аудио панели: {panel.FriendlyName}");
+                        }
+                        else
+                        {
+                            _log.Warn($"Ручная настройка аудио панели не найдена (ID: {adminConfig.PanelAudioEndpointIdOverride}). " +
+                                      "Переключаюсь на автоопределение.");
+                        }
+                    }
+                    
+                    // Ручной выбор аудио компьютера
+                    if (!string.IsNullOrWhiteSpace(adminConfig.ComputerAudioEndpointIdOverride))
+                    {
+                        computer = raw.FirstOrDefault(e => e.Id == adminConfig.ComputerAudioEndpointIdOverride);
+                        if (computer is not null)
+                        {
+                            _log.Info($"Используется ручная настройка аудио компьютера: {computer.FriendlyName}");
+                        }
+                        else
+                        {
+                            _log.Warn($"Ручная настройка аудио компьютера не найдена (ID: {adminConfig.ComputerAudioEndpointIdOverride}). " +
+                                      "Переключаюсь на автоопределение.");
+                        }
+                    }
+                }
+                
+                // Автоопределение для тех устройств, которые не были заданы вручную
+                if (panel is null && panelConnected)
+                {
+                    panel = raw.Where(e => e.IsPanelCandidate)
                         .OrderByDescending(e => e.PanelScore)
                         .ThenByDescending(e => e.IsDefault)
-                        .FirstOrDefault()
-                    : null;
+                        .FirstOrDefault();
+                }
 
-                var computer = raw
-                    .Where(e => panel is null || !string.Equals(e.Id, panel.Id, StringComparison.OrdinalIgnoreCase))
-                    .OrderByDescending(e => e.IsDefault)
-                    .ThenByDescending(e => ScoreComputer(e.CombinedName, e.IsDefault))
-                    .FirstOrDefault();
+                if (computer is null)
+                {
+                    computer = raw
+                        .Where(e => panel is null || !string.Equals(e.Id, panel.Id, StringComparison.OrdinalIgnoreCase))
+                        .OrderByDescending(e => e.IsDefault)
+                        .ThenByDescending(e => ScoreComputer(e.CombinedName, e.IsDefault))
+                        .FirstOrDefault();
+                }
 
                 if (computer is null && panel is null)
                 {

@@ -11,6 +11,10 @@ internal static class NativeMethods
 
     public const uint VK_F8 = 0x77;
     public const uint VK_F9 = 0x78;
+    public const uint VK_A = 0x41;
+    
+    public const uint MOD_CONTROL = 0x0002;
+    public const uint MOD_SHIFT = 0x0004;
 
     public static readonly IntPtr HWND_BROADCAST = new(0xFFFF);
     public const int SW_RESTORE = 9;
