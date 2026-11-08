@@ -1213,12 +1213,24 @@ public sealed class DisplayService
             }
         }
         
-        // Автоопределение (существующая логика)
+        // Автоопределение. Панелью может быть только HDMI/USB-C экран
+        // или монитор с «панельным» именем: иначе, когда панель отключена,
+        // панелью назначался обычный DisplayPort-монитор, и кнопка
+        // «Только компьютер» гасила основной экран.
         var candidates = targets
             .Where(t => t.Available && !t.IsInternal)
+            .Where(t => t.Connection is DisplayConnectionKind.Hdmi or DisplayConnectionKind.UsbC
+                        || LooksLikePanel(t.FriendlyName))
             .ToList();
+
         if (candidates.Count == 0)
         {
+            if (!string.Equals(_lastPanelLogKey, "none", StringComparison.Ordinal))
+            {
+                _lastPanelLogKey = "none";
+                _log.Info("Панель не найдена: подключённые экраны не похожи на интерактивную панель.");
+            }
+
             return null;
         }
 
@@ -1243,6 +1255,17 @@ public sealed class DisplayService
         }
 
         return chosen;
+    }
+
+    private static bool LooksLikePanel(string friendlyName)
+    {
+        if (string.IsNullOrWhiteSpace(friendlyName))
+        {
+            return false;
+        }
+
+        var name = friendlyName.ToLowerInvariant();
+        return PanelKeywords.Any(keyword => name.Contains(keyword, StringComparison.Ordinal));
     }
 
     private static int PanelScore(DisplayTargetInfo target)

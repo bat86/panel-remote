@@ -337,12 +337,17 @@ public sealed class AppController : IDisposable
             ? adminConfig.ComputerAudioEndpointIdOverride
             : _settings.Current.ComputerAudioEndpointId;
 
+        // Звук и изображение независимы: если панель задана вручную,
+        // переключать звук можно даже когда её экран сейчас не подключён.
+        var panelConnectedForAudio = display.PanelConnected
+                                     || (manualAudio && !string.IsNullOrWhiteSpace(adminConfig!.PanelAudioEndpointIdOverride));
+
         var result = await Task.Run(() => _audio.SetDefault(
             target,
             preferredPanelId,
             preferredComputerId,
             display.Panel?.FriendlyName,
-            display.PanelConnected,
+            panelConnectedForAudio,
             display.Computer?.FriendlyName)).ConfigureAwait(false);
 
         if (result.Success)
