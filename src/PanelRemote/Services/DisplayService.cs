@@ -30,6 +30,8 @@ public sealed class DisplayService
     private string? _lastPanelLogKey;
     private string? _lastManualPanelKey;
     private string? _lastManualComputerKey;
+    private string? _lastMissingManualPanel;
+    private string? _lastMissingManualComputer;
 
     public DisplayService(AppLog log, SettingsStore settings)
     {
@@ -161,10 +163,25 @@ public sealed class DisplayService
                           $"Панель={Describe(before.Panel)}, компьютер={Describe(before.Computer)}, " +
                           $"текущий режим={before.CurrentMode.Short()}, разрешение={before.ResolutionText}");
 
+                // Windows иногда гасит выход панели, и она пропадает из перечисления.
+                // Пробуем разбудить её штатным расширением, прежде чем сообщать об ошибке.
                 if (mode is DisplayMode.Duplicate or DisplayMode.Extend or DisplayMode.PanelOnly
                     && !before.PanelConnected)
                 {
-                    return Failure(mode, before, "Панель не подключена — воткните кабель HDMI.");
+                    _log.Info("Панель не видна — пробую разбудить её расширением экрана.");
+                    var wake = SetTopology(DisplayMode.Extend, persistIfRequired: false);
+                    if (wake == 0)
+                    {
+                        Pause(1500);
+                        before = Detect();
+                    }
+                }
+
+                if (mode is DisplayMode.Duplicate or DisplayMode.Extend or DisplayMode.PanelOnly
+                    && !before.PanelConnected)
+                {
+                    return Failure(mode, before,
+                        "Панель не подключена. Включите её и выберите источник HDMI, затем повторите.");
                 }
 
                 if (mode == DisplayMode.ComputerOnly && before.Computer is null)
@@ -505,49 +522,62 @@ public sealed class DisplayService
     {
         try
         {
-            // Сначала штатно включаем все мониторы: Windows сама назначит корректные
-            // режимы, а нам останется выключить лишнее. Без этого выключенный
-            // монитор приходится поднимать синтезированным режимом, и он не оживает.
-            if (state.CurrentMode != DisplayMode.Extend && state.PanelConnected)
+            var all = Query(DisplayConfigNative.QDC_ALL_PATHS);
+            var panelKey = state.Panel?.Key;
+
+            List<List<DisplayConfigNative.DISPLAYCONFIG_PATH_INFO>> BuildWanted(
+                DisplayConfigNative.DISPLAYCONFIG_PATH_INFO[] pathArray)
+            {
+                var result = new List<List<DisplayConfigNative.DISPLAYCONFIG_PATH_INFO>>();
+
+                var groups = pathArray
+                    .Where(p => p.targetInfo.id != uint.MaxValue && p.targetInfo.targetAvailable != 0)
+                    .GroupBy(TargetKey, StringComparer.OrdinalIgnoreCase)
+                    .OrderBy(g => g.Key, StringComparer.OrdinalIgnoreCase);
+
+                foreach (var monitor in groups)
+                {
+                    var isPanel = panelKey is not null
+                                  && string.Equals(monitor.Key, panelKey, StringComparison.OrdinalIgnoreCase);
+
+                    var take = restrictTo is not null
+                        ? restrictTo.Contains(monitor.Key, StringComparer.OrdinalIgnoreCase)
+                        : mode switch
+                        {
+                            DisplayMode.PanelOnly => isPanel,
+                            DisplayMode.ComputerOnly => !isPanel,
+                            _ => true
+                        };
+
+                    if (take)
+                    {
+                        result.Add(monitor.ToList());
+                    }
+                }
+
+                return result;
+            }
+
+            var wanted = BuildWanted(all.Paths);
+
+            // Если нужный монитор сейчас выключен, сначала штатно расширяем экран:
+            // Windows сама назначит ему корректный режим. Когда всё уже включено,
+            // лишний EXTEND не делаем — иначе мониторы моргают на каждом переключении.
+            var hasDisabledTarget = wanted.Any(group =>
+                !group.Any(p => (p.flags & DisplayConfigNative.DISPLAYCONFIG_PATH_ACTIVE) != 0));
+
+            if (hasDisabledTarget && state.PanelConnected)
             {
                 var extendCode = SetTopology(DisplayMode.Extend, persistIfRequired: false);
                 if (extendCode == 0)
                 {
                     Pause(700);
+                    all = Query(DisplayConfigNative.QDC_ALL_PATHS);
+                    wanted = BuildWanted(all.Paths);
                 }
                 else
                 {
                     _log.Warn($"Не удалось предварительно расширить экран: {extendCode} ({FormatError(extendCode)}).");
-                }
-            }
-
-            var all = Query(DisplayConfigNative.QDC_ALL_PATHS);
-            var panelKey = state.Panel?.Key;
-
-            var monitors = all.Paths
-                .Where(p => p.targetInfo.id != uint.MaxValue && p.targetInfo.targetAvailable != 0)
-                .GroupBy(TargetKey, StringComparer.OrdinalIgnoreCase)
-                .OrderBy(g => g.Key, StringComparer.OrdinalIgnoreCase)
-                .ToList();
-
-            var wanted = new List<List<DisplayConfigNative.DISPLAYCONFIG_PATH_INFO>>();
-            foreach (var monitor in monitors)
-            {
-                var isPanel = panelKey is not null
-                              && string.Equals(monitor.Key, panelKey, StringComparison.OrdinalIgnoreCase);
-
-                var take = restrictTo is not null
-                    ? restrictTo.Contains(monitor.Key, StringComparer.OrdinalIgnoreCase)
-                    : mode switch
-                    {
-                        DisplayMode.PanelOnly => isPanel,
-                        DisplayMode.ComputerOnly => !isPanel,
-                        _ => true
-                    };
-
-                if (take)
-                {
-                    wanted.Add(monitor.ToList());
                 }
             }
 
@@ -1127,8 +1157,17 @@ public sealed class DisplayService
             }
             else
             {
-                _log.Warn($"Ручная настройка панели не найдена: {adminConfig.PanelDisplayOverride.DisplayFriendlyName}. " +
-                          "Переключаюсь на автоопределение.");
+                // Подменять панель другим монитором нельзя: учитель нажимает
+                // «Только панель», а переключался бы основной монитор.
+                if (!string.Equals(_lastMissingManualPanel, adminConfig.PanelDisplayOverride.DisplayFriendlyName,
+                        StringComparison.OrdinalIgnoreCase))
+                {
+                    _lastMissingManualPanel = adminConfig.PanelDisplayOverride.DisplayFriendlyName;
+                    _log.Warn($"Ручная панель «{adminConfig.PanelDisplayOverride.DisplayFriendlyName}» не видна Windows. " +
+                              "Проверьте питание панели и выбранный источник HDMI.");
+                }
+
+                return null;
             }
         }
         
@@ -1233,8 +1272,13 @@ public sealed class DisplayService
             }
             else
             {
-                _log.Warn($"Ручная настройка компьютера не найдена: {adminConfig.ComputerDisplayOverride.DisplayFriendlyName}. " +
-                          "Переключаюсь на автоопределение.");
+                if (!string.Equals(_lastMissingManualComputer, adminConfig.ComputerDisplayOverride.DisplayFriendlyName,
+                        StringComparison.OrdinalIgnoreCase))
+                {
+                    _lastMissingManualComputer = adminConfig.ComputerDisplayOverride.DisplayFriendlyName;
+                    _log.Warn($"Ручной экран компьютера «{adminConfig.ComputerDisplayOverride.DisplayFriendlyName}» не виден Windows. " +
+                              "Проверьте кабель.");
+                }
             }
         }
         

@@ -48,6 +48,11 @@ public sealed class AdminViewModel : ObservableObject
 
     public ObservableCollection<DisplayItemViewModel> DisplayItems { get; }
     public ObservableCollection<AudioItemViewModel> AudioItems { get; }
+
+    /// <summary>Версия сборки — чтобы было видно, какая сборка тестируется.</summary>
+    public string VersionText => $"версия {AppPaths.Version}";
+
+    public string WindowTitle => $"Настройки администратора — Пульт доски {AppPaths.Version}";
     
     public bool UseManualConfiguration
     {
@@ -79,17 +84,35 @@ public sealed class AdminViewModel : ObservableObject
             // Получаем ВСЕ доступные дисплеи (включая неактивные)
             var allDisplays = _controller.DisplayService.GetAllAvailableTargets();
             
+            var manualActive = adminConfig?.UseManualConfiguration == true;
+
             foreach (var display in allDisplays)
             {
                 var role = DisplayRole.None;
 
-                if (MatchesOverride(adminConfig?.PanelDisplayOverride, display))
+                if (manualActive && MatchesOverride(adminConfig?.PanelDisplayOverride, display))
                 {
                     role = DisplayRole.Panel;
                 }
-                else if (MatchesOverride(adminConfig?.ComputerDisplayOverride, display))
+                else if (manualActive && MatchesOverride(adminConfig?.ComputerDisplayOverride, display))
                 {
                     role = DisplayRole.Computer;
+                }
+
+                // В авторежиме показываем, что программа определила сама:
+                // иначе непонятно, что именно нужно переопределять.
+                if (!manualActive)
+                {
+                    if (!string.IsNullOrWhiteSpace(state.Display.Panel?.Key)
+                        && string.Equals(display.Key, state.Display.Panel.Key, StringComparison.OrdinalIgnoreCase))
+                    {
+                        role = DisplayRole.Panel;
+                    }
+                    else if (!string.IsNullOrWhiteSpace(state.Display.Computer?.Key)
+                             && string.Equals(display.Key, state.Display.Computer.Key, StringComparison.OrdinalIgnoreCase))
+                    {
+                        role = DisplayRole.Computer;
+                    }
                 }
 
                 DisplayItems.Add(new DisplayItemViewModel(display, role));
@@ -100,12 +123,30 @@ public sealed class AdminViewModel : ObservableObject
             foreach (var endpoint in state.Audio.Endpoints)
             {
                 var role = AudioRole.None;
-                
-                if (adminConfig?.PanelAudioEndpointIdOverride == endpoint.Id)
+
+                if (manualActive && adminConfig?.PanelAudioEndpointIdOverride == endpoint.Id)
+                {
                     role = AudioRole.Panel;
-                else if (adminConfig?.ComputerAudioEndpointIdOverride == endpoint.Id)
+                }
+                else if (manualActive && adminConfig?.ComputerAudioEndpointIdOverride == endpoint.Id)
+                {
                     role = AudioRole.Computer;
-                
+                }
+
+                if (!manualActive)
+                {
+                    if (!string.IsNullOrWhiteSpace(state.Audio.PanelEndpoint?.Id)
+                        && state.Audio.PanelEndpoint.Id == endpoint.Id)
+                    {
+                        role = AudioRole.Panel;
+                    }
+                    else if (!string.IsNullOrWhiteSpace(state.Audio.ComputerEndpoint?.Id)
+                             && state.Audio.ComputerEndpoint.Id == endpoint.Id)
+                    {
+                        role = AudioRole.Computer;
+                    }
+                }
+
                 AudioItems.Add(new AudioItemViewModel(endpoint, role));
             }
             
@@ -152,6 +193,17 @@ public sealed class AdminViewModel : ObservableObject
             
             if (UseManualConfiguration)
             {
+                var hasPanel = DisplayItems.Any(d => d.Role == DisplayRole.Panel);
+                var hasComputer = DisplayItems.Any(d => d.Role == DisplayRole.Computer);
+
+                if (!hasPanel || !hasComputer)
+                {
+                    StatusMessage = !hasPanel
+                        ? "Выберите дисплей панели — без этого ручной режим не сохранится."
+                        : "Выберите дисплей компьютера — без этого ручной режим не сохранится.";
+                    return false;
+                }
+
                 // Ищем выбранную панель
                 var panelDisplay = DisplayItems.FirstOrDefault(d => d.Role == DisplayRole.Panel);
                 if (panelDisplay != null)

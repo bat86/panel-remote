@@ -79,6 +79,19 @@ public sealed class AppController : IDisposable
 
         _audio.StartMonitoring();
         await RefreshAsync();
+
+        // Если панель задана вручную, но Windows её не видит (погас HDMI-выход),
+        // пробуем один раз разбудить её штатным расширением экрана.
+        var adminConfig = _settings.Current.AdminConfig;
+        if (adminConfig?.UseManualConfiguration == true
+            && adminConfig.PanelDisplayOverride is not null
+            && !State.Display.PanelConnected)
+        {
+            _log.Info("Панель из ручной настройки не видна — пробую разбудить её расширением.");
+            await Task.Run(() => _display.Apply(DisplayMode.Extend)).ConfigureAwait(false);
+            await Task.Delay(1500).ConfigureAwait(false);
+            await RefreshAsync().ConfigureAwait(false);
+        }
     }
 
     /// <summary>Перечитать состояние. При появлении панели возвращает сохранённые настройки.</summary>
@@ -322,10 +335,24 @@ public sealed class AppController : IDisposable
         }
 
         var display = await Task.Run(_display.Detect).ConfigureAwait(false);
+
+        // Ручная настройка администратора важнее сохранённого авто-предпочтения,
+        // иначе переключение уходит на устройство, выбранное когда-то автоматикой.
+        var adminConfig = _settings.Current.AdminConfig;
+        var manualAudio = adminConfig?.UseManualConfiguration == true;
+
+        var preferredPanelId = manualAudio && !string.IsNullOrWhiteSpace(adminConfig!.PanelAudioEndpointIdOverride)
+            ? adminConfig.PanelAudioEndpointIdOverride
+            : _settings.Current.PanelAudioEndpointId;
+
+        var preferredComputerId = manualAudio && !string.IsNullOrWhiteSpace(adminConfig!.ComputerAudioEndpointIdOverride)
+            ? adminConfig.ComputerAudioEndpointIdOverride
+            : _settings.Current.ComputerAudioEndpointId;
+
         var result = await Task.Run(() => _audio.SetDefault(
             target,
-            _settings.Current.PanelAudioEndpointId,
-            _settings.Current.ComputerAudioEndpointId,
+            preferredPanelId,
+            preferredComputerId,
             display.Panel?.FriendlyName,
             display.PanelConnected,
             display.Computer?.FriendlyName)).ConfigureAwait(false);

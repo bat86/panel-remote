@@ -27,6 +27,8 @@ public sealed class AudioService : IDisposable
     private bool _testSoundAllocated;
     private bool _disposed;
     private string _lastLoggedFingerprint = string.Empty;
+    private string? _lastManualPanelAudioId;
+    private string? _lastManualComputerAudioId;
 
     public AudioService(AppLog log, SettingsStore settings)
     {
@@ -158,7 +160,11 @@ public sealed class AudioService : IDisposable
                         panel = raw.FirstOrDefault(e => e.Id == adminConfig.PanelAudioEndpointIdOverride);
                         if (panel is not null)
                         {
-                            _log.Info($"Используется ручная настройка аудио панели: {panel.FriendlyName}");
+                            if (!string.Equals(_lastManualPanelAudioId, panel.Id, StringComparison.OrdinalIgnoreCase))
+                            {
+                                _lastManualPanelAudioId = panel.Id;
+                                _log.Info($"Используется ручная настройка аудио панели: {panel.FriendlyName}");
+                            }
                         }
                         else
                         {
@@ -173,7 +179,11 @@ public sealed class AudioService : IDisposable
                         computer = raw.FirstOrDefault(e => e.Id == adminConfig.ComputerAudioEndpointIdOverride);
                         if (computer is not null)
                         {
-                            _log.Info($"Используется ручная настройка аудио компьютера: {computer.FriendlyName}");
+                            if (!string.Equals(_lastManualComputerAudioId, computer.Id, StringComparison.OrdinalIgnoreCase))
+                            {
+                                _lastManualComputerAudioId = computer.Id;
+                                _log.Info($"Используется ручная настройка аудио компьютера: {computer.FriendlyName}");
+                            }
                         }
                         else
                         {

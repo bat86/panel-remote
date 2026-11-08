@@ -96,6 +96,12 @@
                                    FontWeight="Bold"
                                    Foreground="#9CC8FF" />
                     </Border>
+                    <TextBlock Text="{Binding VersionText}"
+                               Margin="12,0,0,0"
+                               FontSize="14"
+                               FontWeight="SemiBold"
+                               Foreground="#7FA6CC"
+                               VerticalAlignment="Center" />
                 </StackPanel>
                 <TextBlock Text="Одна большая кнопка — и всё работает.   F8 — дублировать, F9 — звук на панель."
                            FontSize="16"

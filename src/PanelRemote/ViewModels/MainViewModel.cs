@@ -29,6 +29,9 @@ public sealed class MainViewModel : ObservableObject
     private string _diagnosticFixLabel = "ИСПРАВИТЬ ВСЁ";
     private bool _diagnosticHasProblems;
 
+    /// <summary>Версия сборки — видна в шапке, чтобы не тестировать старый EXE.</summary>
+    public string VersionText => "v" + AppPaths.Version;
+
     public MainViewModel(AppController controller, AppLog log)
     {
         _controller = controller;

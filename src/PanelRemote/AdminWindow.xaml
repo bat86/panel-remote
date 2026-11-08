@@ -6,7 +6,7 @@
         xmlns:vm="clr-namespace:PanelRemote.ViewModels"
         xmlns:infra="clr-namespace:PanelRemote.Infrastructure"
         mc:Ignorable="d"
-        Title="Настройки администратора — Пульт доски"
+        Title="{Binding WindowTitle}"
         Width="1000" Height="700"
         MinWidth="800" MinHeight="600"
         WindowStartupLocation="CenterScreen"
@@ -67,11 +67,16 @@
         </Grid.RowDefinitions>
         
         <!-- Заголовок -->
-        <TextBlock Grid.Row="0" 
-                   Text="Настройки администратора"
-                   FontSize="28" FontWeight="Bold"
-                   Foreground="#333333"
-                   Margin="0,0,0,10"/>
+        <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="0,0,0,10">
+            <TextBlock Text="Настройки администратора"
+                       FontSize="28" FontWeight="Bold"
+                       Foreground="#333333" />
+            <TextBlock Text="{Binding VersionText}"
+                       FontSize="16" FontWeight="SemiBold"
+                       Foreground="#0078D4"
+                       VerticalAlignment="Bottom"
+                       Margin="12,0,0,4" />
+        </StackPanel>
         
         <!-- Предупреждение -->
         <Border Grid.Row="1" 
@@ -135,15 +140,15 @@
                                                 Orientation="Horizontal"
                                                 VerticalAlignment="Center">
                                         <RadioButton Content="Панель"
-                                                     GroupName="{Binding Display.Key}"
+                                                     GroupName="DisplayRoleGroup"
                                                      IsChecked="{Binding Role, Converter={StaticResource EnumToBoolConverter}, ConverterParameter=Panel}"
                                                      Style="{StaticResource RoleRadioButton}"/>
                                         <RadioButton Content="Компьютер"
-                                                     GroupName="{Binding Display.Key}"
+                                                     GroupName="DisplayRoleGroup"
                                                      IsChecked="{Binding Role, Converter={StaticResource EnumToBoolConverter}, ConverterParameter=Computer}"
                                                      Style="{StaticResource RoleRadioButton}"/>
                                         <RadioButton Content="—"
-                                                     GroupName="{Binding Display.Key}"
+                                                     GroupName="DisplayRoleGroup"
                                                      IsChecked="{Binding Role, Converter={StaticResource EnumToBoolConverter}, ConverterParameter=None}"
                                                      Style="{StaticResource RoleRadioButton}"
                                                      ToolTip="Не использовать"/>
@@ -187,15 +192,15 @@
                                                 Orientation="Horizontal"
                                                 VerticalAlignment="Center">
                                         <RadioButton Content="Панель"
-                                                     GroupName="{Binding Endpoint.Id}"
+                                                     GroupName="AudioRoleGroup"
                                                      IsChecked="{Binding Role, Converter={StaticResource EnumToBoolConverter}, ConverterParameter=Panel}"
                                                      Style="{StaticResource RoleRadioButton}"/>
                                         <RadioButton Content="Компьютер"
-                                                     GroupName="{Binding Endpoint.Id}"
+                                                     GroupName="AudioRoleGroup"
                                                      IsChecked="{Binding Role, Converter={StaticResource EnumToBoolConverter}, ConverterParameter=Computer}"
                                                      Style="{StaticResource RoleRadioButton}"/>
                                         <RadioButton Content="—"
-                                                     GroupName="{Binding Endpoint.Id}"
+                                                     GroupName="AudioRoleGroup"
                                                      IsChecked="{Binding Role, Converter={StaticResource EnumToBoolConverter}, ConverterParameter=None}"
                                                      Style="{StaticResource RoleRadioButton}"
                                                      ToolTip="Не использовать"/>
