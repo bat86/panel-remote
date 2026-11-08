@@ -1,0 +1,31 @@
+# Build outputs (не коммитим бинарники и локальную сборку)
+artifacts/
+dist/
+**/bin/
+**/obj/
+
+# IDE / OS
+.vs/
+.vscode/
+.idea/
+*.user
+*.suo
+Thumbs.db
+Desktop.ini
+.DS_Store
+
+# Локальное окружение и тестовые хвосты
+.tools/
+.dotnet-home/
+.nuget/
+.wine-test/
+.ffprofile/
+.cache/
+*.log
+build-*.log
+publish-*.log
+wine-run*.log
+wineboot.log
+structcheck.log
+screen.png
+desktop-test.png

@@ -1,0 +1,13 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net8.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>disable</ImplicitUsings>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="..\..\src\PanelRemote\Interop\DisplayConfigNative.cs" Link="DisplayConfigNative.cs" />
+    <Compile Include="..\..\src\PanelRemote\Interop\AudioNative.cs" Link="AudioNative.cs" />
+    <Compile Include="..\..\src\PanelRemote\Interop\NativeMethods.cs" Link="NativeMethods.cs" />
+  </ItemGroup>
+</Project>

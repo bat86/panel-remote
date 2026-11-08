@@ -1,0 +1,182 @@
+<UserControl x:Class="PanelRemote.Controls.ActionTile"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             mc:Ignorable="d"
+             x:Name="Root"
+             FontFamily="{StaticResource AppFont}"
+             Focusable="False"
+             IsTabStop="False">
+    <UserControl.Resources>
+        <Style x:Key="TileStyle" TargetType="{x:Type Button}">
+            <Setter Property="Background" Value="{StaticResource CardBrush}" />
+            <Setter Property="BorderBrush" Value="{StaticResource CardBorderBrush}" />
+            <Setter Property="BorderThickness" Value="2" />
+            <Setter Property="Foreground" Value="White" />
+            <Setter Property="Padding" Value="14,10" />
+            <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+            <Setter Property="VerticalContentAlignment" Value="Stretch" />
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="SnapsToDevicePixels" Value="True" />
+            <Setter Property="AutomationProperties.Name" Value="{Binding Title, ElementName=Root}" />
+            <Setter Property="AutomationProperties.HelpText" Value="{Binding Hint, ElementName=Root}" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="{x:Type Button}">
+                        <Grid>
+                            <Border x:Name="Chrome"
+                                    Background="{TemplateBinding Background}"
+                                    BorderBrush="{TemplateBinding BorderBrush}"
+                                    BorderThickness="{TemplateBinding BorderThickness}"
+                                    CornerRadius="20"
+                                    Padding="{TemplateBinding Padding}"
+                                    SnapsToDevicePixels="True">
+                                <ContentPresenter HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
+                                                  VerticalAlignment="{TemplateBinding VerticalContentAlignment}" />
+                            </Border>
+                            <Border x:Name="HoverOverlay"
+                                    Background="White"
+                                    Opacity="0"
+                                    CornerRadius="20"
+                                    IsHitTestVisible="False" />
+                        </Grid>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="HoverOverlay" Property="Opacity" Value="0.055" />
+                                <Setter TargetName="Chrome" Property="BorderThickness" Value="3" />
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="HoverOverlay" Property="Opacity" Value="0.11" />
+                            </Trigger>
+                            <Trigger Property="IsKeyboardFocused" Value="True">
+                                <Setter TargetName="Chrome" Property="BorderBrush" Value="White" />
+                                <Setter TargetName="Chrome" Property="BorderThickness" Value="4" />
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter TargetName="Chrome" Property="Opacity" Value="0.42" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding IsPrimary, ElementName=Root}" Value="True">
+                    <Setter Property="Background" Value="{StaticResource PrimaryBrush}" />
+                    <Setter Property="BorderBrush" Value="{StaticResource PrimaryBorderBrush}" />
+                    <Setter Property="Effect">
+                        <Setter.Value>
+                            <DropShadowEffect Color="#2C7CFF" BlurRadius="26" ShadowDepth="0" Opacity="0.55" />
+                        </Setter.Value>
+                    </Setter>
+                </DataTrigger>
+                <DataTrigger Binding="{Binding IsDiagnostic, ElementName=Root}" Value="True">
+                    <Setter Property="Background" Value="{StaticResource DiagnosticBrush}" />
+                    <Setter Property="BorderBrush" Value="{StaticResource DiagnosticBorderBrush}" />
+                </DataTrigger>
+                <DataTrigger Binding="{Binding IsActive, ElementName=Root}" Value="True">
+                    <Setter Property="Background" Value="{StaticResource ActiveBrush}" />
+                    <Setter Property="BorderBrush" Value="{StaticResource ActiveBorderBrush}" />
+                    <Setter Property="Effect" Value="{x:Null}" />
+                </DataTrigger>
+            </Style.Triggers>
+        </Style>
+    </UserControl.Resources>
+
+    <Button x:Name="TileButton"
+            Style="{StaticResource TileStyle}"
+            Command="{Binding Command, ElementName=Root}"
+            ToolTip="{Binding Hint, ElementName=Root}">
+        <Grid>
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="*" />
+            </Grid.ColumnDefinitions>
+
+            <Grid Grid.Column="0" VerticalAlignment="Center" Margin="0,0,12,0">
+                <Border x:Name="IconBox"
+                        Width="62"
+                        Height="62"
+                        CornerRadius="17">
+                <Border.Style>
+                    <Style TargetType="{x:Type Border}">
+                        <Setter Property="Background" Value="#173456" />
+                        <Setter Property="BorderBrush" Value="#2C527D" />
+                        <Setter Property="BorderThickness" Value="1" />
+                        <Style.Triggers>
+                            <DataTrigger Binding="{Binding IsPrimary, ElementName=Root}" Value="True">
+                                <Setter Property="Background" Value="#2D68DC" />
+                                <Setter Property="BorderBrush" Value="#82B4FF" />
+                            </DataTrigger>
+                            <DataTrigger Binding="{Binding IsDiagnostic, ElementName=Root}" Value="True">
+                                <Setter Property="Background" Value="#4A3511" />
+                                <Setter Property="BorderBrush" Value="#C68A2A" />
+                            </DataTrigger>
+                            <DataTrigger Binding="{Binding IsActive, ElementName=Root}" Value="True">
+                                <Setter Property="Background" Value="#0E7445" />
+                                <Setter Property="BorderBrush" Value="#83F7B5" />
+                            </DataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                    </Border.Style>
+                    <TextBlock Text="{Binding Icon, ElementName=Root}"
+                               FontFamily="{StaticResource EmojiFont}"
+                               FontSize="34"
+                               HorizontalAlignment="Center"
+                               VerticalAlignment="Center"
+                               TextOptions.TextFormattingMode="Display" />
+                </Border>
+                <Border Width="26"
+                        Height="26"
+                        CornerRadius="13"
+                        Background="#06351E"
+                        BorderBrush="#6BFFAA"
+                        BorderThickness="2"
+                        HorizontalAlignment="Right"
+                        VerticalAlignment="Top"
+                        Margin="0,-7,-7,0"
+                        Visibility="{Binding IsActive, ElementName=Root, Converter={StaticResource BoolToVisibility}}">
+                    <TextBlock Text="✓"
+                               FontSize="16"
+                               FontWeight="Bold"
+                               Foreground="#8CFFBC"
+                               HorizontalAlignment="Center"
+                               VerticalAlignment="Center" />
+                </Border>
+            </Grid>
+
+            <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                <TextBlock Text="{Binding Title, ElementName=Root}"
+                           FontSize="43"
+                           FontWeight="Bold"
+                           Foreground="White"
+                           TextWrapping="Wrap"
+                           LineHeight="48"
+                           LineStackingStrategy="BlockLineHeight"
+                           TextOptions.TextFormattingMode="Display" />
+                <TextBlock Text="{Binding Hint, ElementName=Root}"
+                           FontSize="17"
+                           FontWeight="SemiBold"
+                           Foreground="#C9DBEF"
+                           TextWrapping="Wrap"
+                           Margin="0,3,0,0"
+                           TextOptions.TextFormattingMode="Display">
+                    <TextBlock.Style>
+                        <Style TargetType="{x:Type TextBlock}">
+                            <Setter Property="Visibility" Value="Visible" />
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding Hint, ElementName=Root}" Value="">
+                                    <Setter Property="Visibility" Value="Collapsed" />
+                                </DataTrigger>
+                                <DataTrigger Binding="{Binding Hint, ElementName=Root}" Value="{x:Null}">
+                                    <Setter Property="Visibility" Value="Collapsed" />
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </TextBlock.Style>
+                </TextBlock>
+            </StackPanel>
+
+        </Grid>
+    </Button>
+</UserControl>

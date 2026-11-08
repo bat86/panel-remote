@@ -1,0 +1,68 @@
+name: build
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  windows:
+    name: Windows build and publish
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET 8
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "8.0.x"
+
+      - name: ABI layout checks
+        run: dotnet run --project tests/InteropLayoutChecks/InteropLayoutChecks.csproj -c Release
+
+      - name: Build solution
+        run: dotnet build PanelRemote.sln -c Release
+
+      - name: Publish single-file EXE
+        run: >
+          dotnet publish src/PanelRemote/PanelRemote.csproj
+          -c Release
+          -r win-x64
+          --self-contained true
+          -p:Platform=x64
+          -p:PublishSingleFile=true
+          -p:IncludeNativeLibrariesForSelfExtract=true
+          -p:EnableCompressionInSingleFile=true
+          -p:DebugType=None
+          -p:DebugSymbols=false
+          -o artifacts/PanelRemote
+
+      - name: Upload EXE
+        uses: actions/upload-artifact@v4
+        with:
+          name: PanelRemote-win-x64
+          path: artifacts/PanelRemote/PanelRemote.exe
+          if-no-files-found: error
+
+  linux-cross-check:
+    name: Linux cross-build check
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET 8
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "8.0.x"
+
+      - name: ABI layout checks
+        run: dotnet run --project tests/InteropLayoutChecks/InteropLayoutChecks.csproj -c Release
+
+      - name: Build Windows-targeting solution on Linux
+        run: dotnet build PanelRemote.sln -c Release

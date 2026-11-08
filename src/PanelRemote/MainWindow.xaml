@@ -1,0 +1,485 @@
+<Window x:Class="PanelRemote.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:controls="clr-namespace:PanelRemote.Controls"
+        xmlns:models="clr-namespace:PanelRemote.Models"
+        Title="Пульт доски"
+        Icon="pack://application:,,,/Assets/app.ico"
+        Width="1366"
+        Height="768"
+        MinWidth="1280"
+        MinHeight="700"
+        WindowStyle="None"
+        ResizeMode="NoResize"
+        WindowStartupLocation="Manual"
+        Background="{StaticResource WindowBrush}"
+        FontFamily="{StaticResource AppFont}"
+        UseLayoutRounding="True"
+        SnapsToDevicePixels="True"
+        TextOptions.TextFormattingMode="Display"
+        KeyboardNavigation.TabNavigation="Cycle">
+    <Window.Resources>
+        <Style x:Key="TrayButtonStyle" TargetType="{x:Type Button}">
+            <Setter Property="FontFamily" Value="{StaticResource AppFont}" />
+            <Setter Property="FontSize" Value="15" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+            <Setter Property="Foreground" Value="#D6E6F8" />
+            <Setter Property="Background" Value="#12253B" />
+            <Setter Property="BorderBrush" Value="#345273" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="Padding" Value="16,8" />
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="{x:Type Button}">
+                        <Border x:Name="Chrome"
+                                Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}"
+                                CornerRadius="10"
+                                Padding="{TemplateBinding Padding}">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Chrome" Property="Background" Value="#1B3A5B" />
+                                <Setter TargetName="Chrome" Property="BorderBrush" Value="#6D9DCF" />
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="Chrome" Property="Opacity" Value="0.75" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style x:Key="StatusCardStyle" TargetType="{x:Type Border}">
+            <Setter Property="Background" Value="#0B1A2C" />
+            <Setter Property="BorderBrush" Value="#233D5C" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="CornerRadius" Value="16" />
+            <Setter Property="Padding" Value="20,12" />
+        </Style>
+    </Window.Resources>
+
+    <Grid x:Name="RootGrid" Margin="18,13,18,13">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+
+        <!-- Шапка -->
+        <Grid Grid.Row="0">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="Auto" />
+            </Grid.ColumnDefinitions>
+            <StackPanel Grid.Column="0" VerticalAlignment="Center">
+                <StackPanel Orientation="Horizontal">
+                    <TextBlock Text="ПУЛЬТ ДОСКИ"
+                               FontSize="34"
+                               FontWeight="Black"
+                               Foreground="White"
+                               VerticalAlignment="Center" />
+                    <Border Margin="14,0,0,0"
+                            Padding="10,3"
+                            CornerRadius="9"
+                            Background="#143357"
+                            BorderBrush="#315E8D"
+                            BorderThickness="1"
+                            VerticalAlignment="Center">
+                        <TextBlock Text="ДЛЯ ШКОЛЫ"
+                                   FontSize="13"
+                                   FontWeight="Bold"
+                                   Foreground="#9CC8FF" />
+                    </Border>
+                </StackPanel>
+                <TextBlock Text="Одна большая кнопка — и всё работает.   F8 — дублировать, F9 — звук на панель."
+                           FontSize="16"
+                           Foreground="{StaticResource MutedTextBrush}"
+                           Margin="0,3,0,0"
+                           TextWrapping="Wrap" />
+            </StackPanel>
+
+            <StackPanel Grid.Column="1"
+                        Orientation="Horizontal"
+                        HorizontalAlignment="Right"
+                        VerticalAlignment="Center"
+                        Margin="18,0,0,0">
+                <TextBlock Text="{Binding BusyText}"
+                           FontSize="18"
+                           FontWeight="Bold"
+                           Foreground="{StaticResource AmberBrush}"
+                           VerticalAlignment="Center"
+                           Margin="0,0,18,0">
+                    <TextBlock.Style>
+                        <Style TargetType="{x:Type TextBlock}">
+                            <Setter Property="Visibility" Value="Visible" />
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding BusyText}" Value="">
+                                    <Setter Property="Visibility" Value="Collapsed" />
+                                </DataTrigger>
+                                <DataTrigger Binding="{Binding BusyText}" Value="{x:Null}">
+                                    <Setter Property="Visibility" Value="Collapsed" />
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </TextBlock.Style>
+                </TextBlock>
+                <Button Content="СВЕРНУТЬ В ТРЕЙ"
+                        Style="{StaticResource TrayButtonStyle}"
+                        Click="MinimizeToTray_Click"
+                        Height="44" />
+            </StackPanel>
+        </Grid>
+
+        <!-- Состояние подключения -->
+        <Border Grid.Row="1" Margin="0,9,0,0" CornerRadius="16" BorderThickness="2" Padding="20,9">
+            <Border.Style>
+                <Style TargetType="{x:Type Border}">
+                    <Setter Property="Background" Value="#462B00" />
+                    <Setter Property="BorderBrush" Value="#E7A51B" />
+                    <Style.Triggers>
+                        <DataTrigger Binding="{Binding IsPanelConnected}" Value="True">
+                            <Setter Property="Background" Value="#0B3926" />
+                            <Setter Property="BorderBrush" Value="#2BD77A" />
+                        </DataTrigger>
+                    </Style.Triggers>
+                </Style>
+            </Border.Style>
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
+                <Border Width="16" Height="16" CornerRadius="8" VerticalAlignment="Center">
+                    <Border.Style>
+                        <Style TargetType="{x:Type Border}">
+                            <Setter Property="Background" Value="{StaticResource AmberBrush}" />
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding IsPanelConnected}" Value="True">
+                                    <Setter Property="Background" Value="{StaticResource GreenBrush}" />
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </Border.Style>
+                </Border>
+                <StackPanel Grid.Column="1" Margin="14,0,0,0">
+                    <TextBlock Text="{Binding ConnectionTitle}"
+                               FontSize="25"
+                               FontWeight="Bold"
+                               Foreground="White"
+                               TextWrapping="Wrap" />
+                    <TextBlock Text="{Binding ConnectionDetail}"
+                               FontSize="16"
+                               TextWrapping="NoWrap"
+                               TextTrimming="CharacterEllipsis">
+                        <TextBlock.Style>
+                            <Style TargetType="{x:Type TextBlock}">
+                                <Setter Property="Foreground" Value="#E9D8B0" />
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding IsPanelConnected}" Value="True">
+                                        <Setter Property="Foreground" Value="#B9E9CE" />
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </TextBlock.Style>
+                    </TextBlock>
+                </StackPanel>
+            </Grid>
+        </Border>
+
+        <!-- Сообщение после действия -->
+        <Border Grid.Row="2"
+                Margin="18,8,18,0"
+                VerticalAlignment="Top"
+                Panel.ZIndex="60"
+                CornerRadius="12"
+                Background="#F2352707"
+                BorderBrush="#C99226"
+                BorderThickness="1"
+                Padding="18,8"
+                Visibility="{Binding IsNoticeVisible, Converter={StaticResource BoolToVisibility}}">
+            <TextBlock Text="{Binding NoticeText}"
+                       FontSize="18"
+                       FontWeight="SemiBold"
+                       Foreground="#FFE4A8"
+                       TextWrapping="Wrap" />
+        </Border>
+
+        <!-- Семь огромных кнопок -->
+        <Grid Grid.Row="2" Margin="0,7,0,7">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="*" MinHeight="150" />
+                <RowDefinition Height="*" MinHeight="150" />
+                <RowDefinition Height="*" MinHeight="150" />
+            </Grid.RowDefinitions>
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="*" />
+            </Grid.ColumnDefinitions>
+
+            <controls:ActionTile Grid.Row="0" Grid.Column="0"
+                                 Margin="3"
+                                 MinHeight="150"
+                                 Icon="🖥️"
+                                 Title="ТОЛЬКО КОМПЬЮТЕР"
+                                 Hint="Работать на мониторе"
+                                 Command="{Binding ComputerOnlyCommand}"
+                                 IsActive="{Binding IsComputerOnlyActive}" />
+
+            <controls:ActionTile x:Name="DuplicateTile"
+                                 Grid.Row="0" Grid.Column="1"
+                                 Margin="3"
+                                 MinHeight="150"
+                                 Icon="🔁"
+                                 Title="ДУБЛИРОВАТЬ НА ПАНЕЛЬ"
+                                 Hint="Одно нажатие · F8"
+                                 Command="{Binding DuplicateCommand}"
+                                 IsPrimary="True"
+                                 IsActive="{Binding IsDuplicateActive}" />
+
+            <controls:ActionTile Grid.Row="0" Grid.Column="2"
+                                 Margin="3"
+                                 MinHeight="150"
+                                 Icon="➕"
+                                 Title="РАСШИРИТЬ"
+                                 Hint="Второй рабочий стол"
+                                 Command="{Binding ExtendCommand}"
+                                 IsActive="{Binding IsExtendActive}" />
+
+            <controls:ActionTile Grid.Row="1" Grid.Column="0"
+                                 Margin="3"
+                                 MinHeight="150"
+                                 Icon="📺"
+                                 Title="ТОЛЬКО ПАНЕЛЬ"
+                                 Hint="Монитор компьютера выключится"
+                                 Command="{Binding PanelOnlyCommand}"
+                                 IsActive="{Binding IsPanelOnlyActive}" />
+
+            <controls:ActionTile Grid.Row="1" Grid.Column="1"
+                                 Margin="3"
+                                 MinHeight="150"
+                                 Icon="🔊"
+                                 Title="ЗВУК НА ПАНЕЛЬ"
+                                 Hint="Колонки панели · F9"
+                                 Command="{Binding PanelAudioCommand}"
+                                 IsActive="{Binding IsPanelAudioActive}" />
+
+            <controls:ActionTile Grid.Row="1" Grid.Column="2"
+                                 Margin="3"
+                                 MinHeight="150"
+                                 Icon="🎧"
+                                 Title="ЗВУК НА КОМПЬЮТЕР"
+                                 Hint="Колонки компьютера"
+                                 Command="{Binding ComputerAudioCommand}"
+                                 IsActive="{Binding IsComputerAudioActive}" />
+
+            <controls:ActionTile Grid.Row="2" Grid.Column="0" Grid.ColumnSpan="3"
+                                 Margin="3"
+                                 MinHeight="150"
+                                 Icon="🩺"
+                                 Title="ДИАГНОСТИКА"
+                                 Hint="Проверить кабель, изображение и звук"
+                                 Command="{Binding DiagnoseCommand}"
+                                 IsDiagnostic="True" />
+        </Grid>
+
+        <!-- Всегда видимый статус -->
+        <Grid Grid.Row="3">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="*" />
+            </Grid.ColumnDefinitions>
+
+            <Border Grid.Column="0" Margin="0,0,5,0" Style="{StaticResource StatusCardStyle}">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
+                    <Border Width="6" CornerRadius="3" Background="#4AEA92" Margin="0,0,15,0" />
+                    <StackPanel Grid.Column="1">
+                        <TextBlock Text="{Binding DisplayStatusTitle}"
+                                   FontSize="25"
+                                   FontWeight="Bold"
+                                   Foreground="White" />
+                        <TextBlock Text="{Binding DisplayStatusDetail}"
+                                   FontSize="16"
+                                   Foreground="{StaticResource MutedTextBrush}"
+                                   TextWrapping="NoWrap"
+                                   TextTrimming="CharacterEllipsis" />
+                    </StackPanel>
+                </Grid>
+            </Border>
+
+            <Border Grid.Column="1" Margin="5,0,0,0" Style="{StaticResource StatusCardStyle}">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
+                    <Border Width="6" CornerRadius="3" Background="#5B9BFF" Margin="0,0,15,0" />
+                    <StackPanel Grid.Column="1">
+                        <TextBlock Text="{Binding AudioStatusTitle}"
+                                   FontSize="25"
+                                   FontWeight="Bold"
+                                   Foreground="White" />
+                        <TextBlock Text="{Binding AudioStatusDetail}"
+                                   FontSize="16"
+                                   Foreground="{StaticResource MutedTextBrush}"
+                                   TextWrapping="NoWrap"
+                                   TextTrimming="CharacterEllipsis" />
+                    </StackPanel>
+                </Grid>
+            </Border>
+        </Grid>
+
+        <!-- Диагностика поверх всего -->
+        <Grid Grid.Row="0" Grid.RowSpan="4"
+              Panel.ZIndex="100"
+              Background="#E6030A12"
+              Visibility="{Binding IsDiagnosticsOpen, Converter={StaticResource BoolToVisibility}}">
+            <Border MaxWidth="1180"
+                    Margin="28"
+                    HorizontalAlignment="Center"
+                    VerticalAlignment="Center"
+                    Background="#0D1B2D"
+                    BorderBrush="#38618C"
+                    BorderThickness="2"
+                    CornerRadius="24">
+                <Grid Margin="32,24,32,20">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="*" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                    </Grid.RowDefinitions>
+
+                    <Grid Grid.Row="0">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Text="{Binding DiagnosticHeadline}"
+                                   FontSize="42"
+                                   FontWeight="Black"
+                                   Foreground="White"
+                                   TextWrapping="Wrap"
+                                   VerticalAlignment="Center" />
+                        <ProgressBar Grid.Column="1"
+                                     Width="190"
+                                     Height="10"
+                                     Margin="22,0,0,0"
+                                     IsIndeterminate="True"
+                                     Foreground="#5B9BFF"
+                                     Background="#152B44"
+                                     VerticalAlignment="Center"
+                                     Visibility="{Binding IsDiagnosticRunning, Converter={StaticResource BoolToVisibility}}" />
+                    </Grid>
+
+                    <TextBlock Grid.Row="1"
+                               Text="{Binding DiagnosticExplanation}"
+                               FontSize="23"
+                               Foreground="#D8E8F8"
+                               TextWrapping="Wrap"
+                               Margin="0,12,0,0" />
+
+                    <Border Grid.Row="2"
+                            Margin="0,18,0,0"
+                            Background="#081421"
+                            BorderBrush="#243F5C"
+                            BorderThickness="1"
+                            CornerRadius="14"
+                            Padding="20,8"
+                            MinHeight="170">
+                        <ScrollViewer VerticalScrollBarVisibility="Auto"
+                                      HorizontalScrollBarVisibility="Disabled"
+                                      MaxHeight="330">
+                            <ItemsControl ItemsSource="{Binding DiagnosticItems}">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate DataType="{x:Type models:DiagnosticItem}">
+                                        <Grid Margin="0,9">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="48" />
+                                                <ColumnDefinition Width="*" />
+                                            </Grid.ColumnDefinitions>
+                                            <TextBlock Text="{Binding Icon}"
+                                                       FontSize="28"
+                                                       FontWeight="Bold"
+                                                       VerticalAlignment="Top">
+                                                <TextBlock.Style>
+                                                    <Style TargetType="{x:Type TextBlock}">
+                                                        <Setter Property="Foreground" Value="#79C8FF" />
+                                                        <Style.Triggers>
+                                                            <DataTrigger Binding="{Binding Severity}" Value="{x:Static models:DiagnosticSeverity.Ok}">
+                                                                <Setter Property="Foreground" Value="{StaticResource GreenBrush}" />
+                                                            </DataTrigger>
+                                                            <DataTrigger Binding="{Binding Severity}" Value="{x:Static models:DiagnosticSeverity.Warning}">
+                                                                <Setter Property="Foreground" Value="{StaticResource AmberBrush}" />
+                                                            </DataTrigger>
+                                                            <DataTrigger Binding="{Binding Severity}" Value="{x:Static models:DiagnosticSeverity.Error}">
+                                                                <Setter Property="Foreground" Value="{StaticResource RedBrush}" />
+                                                            </DataTrigger>
+                                                        </Style.Triggers>
+                                                    </Style>
+                                                </TextBlock.Style>
+                                            </TextBlock>
+                                            <TextBlock Grid.Column="1"
+                                                       Text="{Binding Text}"
+                                                       FontSize="21"
+                                                       Foreground="#EDF5FF"
+                                                       TextWrapping="Wrap"
+                                                       VerticalAlignment="Top" />
+                                        </Grid>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </ScrollViewer>
+                    </Border>
+
+                    <Grid Grid.Row="3" Margin="0,18,0,0">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+                        <Button Grid.Column="0"
+                                Content="{Binding DiagnosticFixLabel}"
+                                Command="{Binding FixAllCommand}"
+                                Style="{StaticResource OverlayPrimaryButton}"
+                                Height="88"
+                                Margin="0,0,6,0" />
+                        <Button Grid.Column="1"
+                                Content="ЗАКРЫТЬ"
+                                Command="{Binding CloseDiagnosticsCommand}"
+                                Style="{StaticResource OverlaySecondaryButton}"
+                                Height="88"
+                                Margin="6,0,0,0" />
+                    </Grid>
+
+                    <Grid Grid.Row="4" Margin="0,13,0,0">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Text="{Binding DiagnosticLogPath}"
+                                   FontSize="14"
+                                   Foreground="#7F98B4"
+                                   TextTrimming="CharacterEllipsis"
+                                   VerticalAlignment="Center" />
+                        <Button Grid.Column="1"
+                                Content="ОТКРЫТЬ ЖУРНАЛ"
+                                Command="{Binding OpenLogsCommand}"
+                                Style="{StaticResource SmallLinkButton}"
+                                FontWeight="SemiBold" />
+                    </Grid>
+                </Grid>
+            </Border>
+        </Grid>
+    </Grid>
+</Window>

@@ -1,0 +1,142 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<title>Пульт доски — макет</title>
+<style>
+  * { box-sizing: border-box; }
+  html, body { margin: 0; width: 1366px; height: 728px; overflow: hidden; }
+  body {
+    background: #07111F;
+    color: white;
+    font-family: "Segoe UI", "Liberation Sans", "DejaVu Sans", sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+  .root { margin: 13px 18px; height: 702px; display: flex; flex-direction: column; }
+  .header { display: flex; justify-content: space-between; align-items: center; height: 61px; flex: 0 0 auto; }
+  .brand { display: flex; align-items: center; gap: 14px; }
+  .brand h1 { margin: 0; font-size: 34px; line-height: 1; font-weight: 900; letter-spacing: 0.2px; }
+  .badge { font-size: 13px; font-weight: 700; color: #9CC8FF; background: #143357; border: 1px solid #315E8D; border-radius: 9px; padding: 5px 10px; }
+  .subtitle { font-size: 16px; color: #ABC0D9; margin-top: 7px; }
+  .header-right { display: flex; align-items: center; gap: 18px; }
+  .busy { font-size: 18px; font-weight: 700; color: #FFC24B; display: none; }
+  .tray-btn { font-size: 15px; font-weight: 600; color: #D6E6F8; background: #12253B; border: 1px solid #345273; border-radius: 10px; padding: 12px 16px; cursor: pointer; }
+  .connection { margin-top: 9px; border-radius: 16px; border: 2px solid #2BD77A; background: #0B3926; padding: 9px 20px; display: flex; align-items: center; gap: 14px; flex: 0 0 auto; }
+  .dot { width: 16px; height: 16px; border-radius: 50%; background: #4AEA92; flex: 0 0 auto; }
+  .connection h2 { margin: 0; font-size: 25px; line-height: 1.05; font-weight: 700; }
+  .connection p { margin: 4px 0 0; font-size: 16px; color: #B9E9CE; }
+  .buttons { flex: 1 1 auto; display: grid; grid-template-columns: repeat(3, 1fr); grid-template-rows: repeat(3, minmax(150px, 1fr)); gap: 0; margin: 7px 0; min-height: 0; }
+  .tile {
+    margin: 4px; border-radius: 20px; padding: 10px 14px; border: 2px solid #2B4A70; background: #10243D;
+    display: flex; align-items: center; gap: 12px; min-height: 150px; position: relative; box-shadow: none;
+  }
+  .tile .icon {
+    width: 62px; height: 62px; flex: 0 0 62px; border-radius: 17px; border: 1px solid #2C527D; background: #173456;
+    display: flex; align-items: center; justify-content: center; font-family: "Noto Color Emoji", "Segoe UI Emoji", sans-serif; font-size: 34px;
+    position: relative;
+  }
+  .tile .copy { min-width: 0; }
+  .tile .title { font-size: 43px; line-height: 48px; font-weight: 700; letter-spacing: -0.4px; }
+  .tile .hint { font-size: 17px; line-height: 20px; font-weight: 600; color: #C9DBEF; margin-top: 3px; }
+  .tile.primary { background: #1558D6; border-color: #69A4FF; box-shadow: 0 0 26px rgba(44,124,255,.55); }
+  .tile.primary .icon { background: #2D68DC; border-color: #82B4FF; }
+  .tile.diag { background: #2A1F0A; border-color: #B67A18; }
+  .tile.diag .icon { background: #4A3511; border-color: #C68A2A; }
+  .tile.active { background: #0A5C36; border-color: #4AEA92; box-shadow: none; }
+  .tile.active .icon { background: #0E7445; border-color: #83F7B5; }
+  .tile.active .icon::after {
+    content: "✓"; position: absolute; right: -7px; top: -7px; width: 26px; height: 26px; border-radius: 50%;
+    background: #06351E; border: 2px solid #6BFFAA; color: #8CFFBC; font-family: "Segoe UI", sans-serif;
+    font-size: 16px; line-height: 22px; text-align: center; font-weight: 700;
+  }
+  .status { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; flex: 0 0 auto; }
+  .card { background: #0B1A2C; border: 1px solid #233D5C; border-radius: 16px; padding: 12px 20px; display: flex; gap: 15px; }
+  .bar { width: 6px; border-radius: 3px; background: #4AEA92; flex: 0 0 6px; }
+  .bar.blue { background: #5B9BFF; }
+  .card h3 { margin: 0; font-size: 25px; line-height: 1.05; font-weight: 700; }
+  .card p { margin: 3px 0 0; font-size: 16px; color: #ABC0D9; }
+  /* диагностический слой для второго макета */
+  .overlay {
+    display: none; position: absolute; inset: 0; background: rgba(3,10,18,.90); z-index: 100;
+    align-items: center; justify-content: center;
+  }
+  .overlay.show { display: flex; }
+  .dialog {
+    width: 1050px; max-height: 650px; border-radius: 24px; border: 2px solid #38618C; background: #0D1B2D; padding: 24px 32px 20px;
+    display: flex; flex-direction: column;
+  }
+  .dialog h2 { margin: 0; font-size: 42px; line-height: 1.1; font-weight: 900; }
+  .dialog .explain { font-size: 23px; margin-top: 12px; color: #D8E8F8; line-height: 1.25; }
+  .checklist { margin-top: 18px; background: #081421; border: 1px solid #243F5C; border-radius: 14px; padding: 8px 20px; min-height: 170px; flex: 1 1 auto; }
+  .check { display: flex; gap: 18px; padding: 9px 0; font-size: 21px; line-height: 1.2; }
+  .check b { width: 30px; flex: 0 0 30px; text-align: center; font-size: 28px; }
+  .ok { color: #4AEA92; }
+  .warn { color: #FFC24B; }
+  .err { color: #FF7272; }
+  .info { color: #79C8FF; }
+  .actions { display: flex; gap: 12px; margin-top: 18px; }
+  .actions button { flex: 1; height: 88px; border-radius: 14px; font-size: 26px; font-weight: 700; border: 2px solid; }
+  .actions .fix { background: #1558D6; border-color: #69A4FF; color: #fff; }
+  .actions .close { background: #162A43; border-color: #3B5B81; color: #EAF3FF; }
+  .log { display: flex; justify-content: space-between; margin-top: 13px; font-size: 14px; color: #7F98B4; }
+  .log span:last-child { color: #9FC7FF; font-weight: 600; }
+</style>
+</head>
+<body>
+<div class="root">
+  <div class="header">
+    <div>
+      <div class="brand"><h1>ПУЛЬТ ДОСКИ</h1><span class="badge">ДЛЯ ШКОЛЫ</span></div>
+      <div class="subtitle">Одна большая кнопка — и всё работает.&nbsp;&nbsp; F8 — дублировать, F9 — звук на панель.</div>
+    </div>
+    <div class="header-right">
+      <div class="busy">ПЕРЕКЛЮЧАЮ ЭКРАН…</div>
+      <div class="tray-btn">СВЕРНУТЬ В ТРЕЙ</div>
+    </div>
+  </div>
+
+  <div class="connection">
+    <div class="dot"></div>
+    <div>
+      <h2>ПАНЕЛЬ ПОДКЛЮЧЕНА</h2>
+      <p>Promethean ActivBoard · HDMI</p>
+    </div>
+  </div>
+
+  <div class="buttons">
+    <div class="tile"><div class="icon">🖥️</div><div class="copy"><div class="title">ТОЛЬКО КОМПЬЮТЕР</div><div class="hint">Работать на мониторе</div></div></div>
+    <div class="tile primary active"><div class="icon">🔁</div><div class="copy"><div class="title">ДУБЛИРОВАТЬ НА ПАНЕЛЬ</div><div class="hint">Одно нажатие · F8</div></div></div>
+    <div class="tile"><div class="icon">➕</div><div class="copy"><div class="title">РАСШИРИТЬ</div><div class="hint">Второй рабочий стол</div></div></div>
+    <div class="tile"><div class="icon">📺</div><div class="copy"><div class="title">ТОЛЬКО ПАНЕЛЬ</div><div class="hint">Монитор компьютера выключится</div></div></div>
+    <div class="tile active"><div class="icon">🔊</div><div class="copy"><div class="title">ЗВУК НА ПАНЕЛЬ</div><div class="hint">Колонки панели · F9</div></div></div>
+    <div class="tile"><div class="icon">🎧</div><div class="copy"><div class="title">ЗВУК НА КОМПЬЮТЕР</div><div class="hint">Колонки компьютера</div></div></div>
+    <div class="tile diag" style="grid-column: 1 / 4;"><div class="icon">🩺</div><div class="copy"><div class="title">ДИАГНОСТИКА</div><div class="hint">Проверить кабель, изображение и звук</div></div></div>
+  </div>
+
+  <div class="status">
+    <div class="card"><div class="bar"></div><div><h3>Экран: повтор ✓</h3><p>1920 × 1080 · 60 Гц · одинаково на двух экранах</p></div></div>
+    <div class="card"><div class="bar blue"></div><div><h3>Звук: панель ✓</h3><p>NVIDIA High Definition Audio</p></div></div>
+  </div>
+</div>
+
+<div class="overlay show" id="overlay">
+  <div class="dialog">
+    <h2>ИЗОБРАЖЕНИЕ ЕСТЬ, ЗВУК НА КОМПЬЮТЕРЕ</h2>
+    <div class="explain">Звук идёт на колонки компьютера — нажми синюю кнопку «Звук на панель». Или нажми «Исправить звук и экран» — я переключу звук сам.</div>
+    <div class="checklist">
+      <div class="check"><b class="ok">✓</b><div>Кабель подключён. Панель: Promethean ActivBoard, разъём HDMI.</div></div>
+      <div class="check"><b class="ok">✓</b><div>Изображение идёт на панель. Режим: повтор, 1920 × 1080 · 60 Гц.</div></div>
+      <div class="check"><b class="warn">!</b><div>Звук идёт на колонки компьютера — нажми синюю кнопку «Звук на панель».</div></div>
+      <div class="check"><b class="info">i</b><div>Тестовый звук отправлен на «Динамики (Realtek(R) Audio)». Если его не слышно — проверьте громкость на панели.</div></div>
+    </div>
+    <div class="actions"><button class="fix">ИСПРАВИТЬ ЗВУК И ЭКРАН</button><button class="close">ЗАКРЫТЬ</button></div>
+    <div class="log"><span>Журнал: C:\Users\teacher\AppData\Local\PanelRemote\logs\panel-20261107.log</span><span>ОТКРЫТЬ ЖУРНАЛ</span></div>
+  </div>
+</div>
+<script>
+  if (location.hash === '#main') {
+    document.getElementById('overlay').classList.remove('show');
+  }
+</script>
+</body>
+</html>

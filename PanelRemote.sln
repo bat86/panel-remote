@@ -1,0 +1,36 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.0.31903.59
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{A5C1D79D-FEA6-498C-843C-984D4C9F71A6}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "PanelRemote", "src\PanelRemote\PanelRemote.csproj", "{B66ED959-7014-4C6E-AB89-E2A0BCB3FCCB}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "tests", "tests", "{CEBE963C-0302-4897-8F2C-4DE98A8813A6}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "InteropLayoutChecks", "tests\InteropLayoutChecks\InteropLayoutChecks.csproj", "{9EADACB1-D794-45D9-ACEE-0DFC9C2139C0}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{B66ED959-7014-4C6E-AB89-E2A0BCB3FCCB}.Debug|Any CPU.ActiveCfg = Debug|x64
+		{B66ED959-7014-4C6E-AB89-E2A0BCB3FCCB}.Debug|Any CPU.Build.0 = Debug|x64
+		{B66ED959-7014-4C6E-AB89-E2A0BCB3FCCB}.Release|Any CPU.ActiveCfg = Release|x64
+		{B66ED959-7014-4C6E-AB89-E2A0BCB3FCCB}.Release|Any CPU.Build.0 = Release|x64
+		{9EADACB1-D794-45D9-ACEE-0DFC9C2139C0}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{9EADACB1-D794-45D9-ACEE-0DFC9C2139C0}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{9EADACB1-D794-45D9-ACEE-0DFC9C2139C0}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{9EADACB1-D794-45D9-ACEE-0DFC9C2139C0}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(NestedProjects) = preSolution
+		{B66ED959-7014-4C6E-AB89-E2A0BCB3FCCB} = {A5C1D79D-FEA6-498C-843C-984D4C9F71A6}
+		{9EADACB1-D794-45D9-ACEE-0DFC9C2139C0} = {CEBE963C-0302-4897-8F2C-4DE98A8813A6}
+	EndGlobalSection
+EndGlobal
