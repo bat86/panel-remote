@@ -88,21 +88,22 @@ artifacts/PanelRemote-win-x64.zip
 1. **Сборка WPF на Linux под Windows.**
    - `dotnet build PanelRemote.sln -c Release` — 0 ошибок, 0 предупреждений.
    - `dotnet publish ... -r win-x64 --self-contained true -p:PublishSingleFile=true ...` — успешно.
-   - Размер EXE: `66 473 730` байт.
-   - SHA-256: `72cf3a961e2af27fd3eb6465d4d5426e5cad7a8e9fab3fbd1ae32103f4e972cb`.
-2. **ABI-тест `tests/InteropLayoutChecks`.**
+   - Размер EXE: `66 491 297` байт.
+   - SHA-256: `7256cdef88e0badfbcc471f30a78ff9293cdf34c2103aa1623ec313ea89d5b23`.
+3. **ABI-тест `tests/InteropLayoutChecks`.**
    - Проверяет размеры `DISPLAYCONFIG_*`, `DEVMODE`, `DISPLAY_DEVICE`, `PROPERTYKEY`, `PROPVARIANT` и значения флагов CCD.
    - Изначально выявил две реальные ошибки:
      - `PROPVARIANT` был 16 байт вместо 24 — native `IPropertyStore.GetValue`/`PropVariantClear` могли испортить память;
      - флаги CCD были сдвинуты (`SDC_SAVE_TO_DATABASE` и др.).
    - После исправлений тест проходит.
-3. **Тихая установка/удаление в Wine.**
+4. **Тихая установка/удаление в Wine (на финальном Windows CI EXE).**
    - `PanelRemote.exe --install --silent` копирует EXE, пишет HKCU Run, создаёт ярлыки.
    - `--uninstall` удаляет автозапуск, ярлыки и папку.
+   - Проверено именно с `artifacts/PanelRemote/PanelRemote.exe` из Windows CI.
    - Первый прогон ярлыков падал из-за Wine: `Desktop` был symlink на `/home/vasily/Рабочий стол` вне sandbox. После замены на записываемую папку ярлыки создались. Это ограничение Wine, не Windows.
-4. **Проверка решения о UI.**
+5. **Проверка решения о UI.**
    - Собран HTML-макет 1366×728 по тем же размерам/цветам/сетке; проверены переносы длинных подписей и высота кнопок.
-5. **Структура и метаданные.**
+6. **Структура и метаданные.**
    - EXE — PE32+ x86-64, GUI subsystem, иконка присутствует.
 
 ### Что не проверено

@@ -8,7 +8,7 @@ Windows-приложение для школы: компьютер препод�
 
 *Макет 1:1; реальное WPF-окно использует ту же сетку и цвета.*
 
-> **Статус:** код и single-file EXE собраны, ABI-структуры и установка проверены. На реальной Windows с интерактивной панелью приложение ещё не прогонялось — см. [docs/TEST-STATUS.md](docs/TEST-STATUS.md) и [docs/TEST-CHECKLIST.md](docs/TEST-CHECKLIST.md).
+> **Статус:** код собирается на Windows в GitHub Actions, ABI-структуры и установка проверены. На реальной Windows с интерактивной панелью приложение ещё не прогонялось — см. [docs/TEST-STATUS.md](docs/TEST-STATUS.md) и [docs/TEST-CHECKLIST.md](docs/TEST-CHECKLIST.md).
 
 ## Что умеет
 

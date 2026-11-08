@@ -32,3 +32,7 @@ desktop-test.png
 
 # локальный тестовый known_hosts
 /.ssh_known_hosts
+
+# Wine/XDG-хвосты (HOME иногда указывает на workspace)
+.config/
+.local/

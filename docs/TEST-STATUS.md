@@ -9,8 +9,10 @@
 | Область | Проверка | Статус | Комментарий |
 |---|---|---|---|
 | Сборка | `dotnet build PanelRemote.sln -c Release` на Linux | PASS | 0 ошибок, 0 предупреждений |
+| Сборка | GitHub Actions: Windows build + publish | PASS | run 42454708370 |
+| Сборка | GitHub Actions: Linux cross-build | PASS | run 42454708370 |
 | ABI | `tests/InteropLayoutChecks` | PASS | размеры структур и флаги CCD |
-| Публикация | self-contained single-file `win-x64` | PASS | EXE 66 473 730 байт |
+| Публикация | self-contained single-file `win-x64` | PASS | EXE 66 491 297 байт |
 | Установка | `--install --silent` в Wine | PASS | копия + HKCU Run |
 | Ярлыки | desktop + Start Menu в Wine | PASS после правки окружения | первый прогон упал из-за symlink Desktop |
 | Удаление | `--uninstall` в Wine | PASS | автозапуск, ярлыки, папка |
@@ -28,7 +30,7 @@
 
 ### 1. Сборка
 
-Команда (Linux, .NET 8.0.427):
+Локально (Linux, .NET 8.0.427):
 
 ```bash
 dotnet build PanelRemote.sln -c Release
@@ -43,6 +45,14 @@ PanelRemote -> .../src/PanelRemote/bin/x64/Release/net8.0-windows/PanelRemote.dl
 ```
 
 Почему это что-то значит: XAML-компилятор WPF, C#-компилятор и привязки ресурсов собрались. Это не проверяет поведение Win32/COM.
+
+Затем CI собрал тот же коммит на `windows-latest`:
+
+- job `Windows build and publish` — PASS;
+- job `Linux cross-build check` — PASS;
+- run: https://github.com/bat86/panel-remote/actions/runs/42454708370 (коммит `268ae32`);
+- итоговый EXE для релиза взят из Windows-артефакта CI;
+- последующие изменения в этом файле — только документация, код не менялся.
 
 ### 2. ABI-структуры и флаги
 
@@ -80,13 +90,13 @@ dotnet publish src/PanelRemote/PanelRemote.csproj \
 
 - `artifacts/PanelRemote/PanelRemote.exe`;
 - PE32+ x86-64, GUI;
-- 66 473 730 байт;
-- SHA-256 `72cf3a961e2af27fd3eb6465d4d5426e5cad7a8e9fab3fbd1ae32103f4e972cb`;
+- 66 491 297 байт;
+- SHA-256 `7256cdef88e0badfbcc471f30a78ff9293cdf34c2103aa1623ec313ea89d5b23`;
 - ZIP `artifacts/PanelRemote-win-x64.zip` (60 873 563 байта).
 
 ### 4. Тихая установка/удаление (Wine)
 
-Проверено на изолированном Wine-префиксе:
+Проверено на изолированном Wine-префиксе с финальным Windows CI EXE:
 
 ```bash
 wine PanelRemote.exe --install --silent
