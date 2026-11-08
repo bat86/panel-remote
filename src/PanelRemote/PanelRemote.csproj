@@ -1,4 +1,4 @@
-<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
@@ -15,14 +15,14 @@
     <EnableWindowsTargeting>true</EnableWindowsTargeting>
     <Platforms>x64</Platforms>
     <PlatformTarget>x64</PlatformTarget>
-    <Version>1.2.0</Version>
-    <AssemblyVersion>1.2.0.0</AssemblyVersion>
-    <FileVersion>1.2.0.0</FileVersion>
-    <Product>Пульт доски</Product>
-    <AssemblyTitle>Пульт доски</AssemblyTitle>
-    <Description>Переключение экрана и звука на интерактивную панель одним нажатием</Description>
-    <Company>Пульт доски</Company>
-    <Copyright>© 2026</Copyright>
+    <Version>1.2.4</Version>
+    <AssemblyVersion>1.2.4.0</AssemblyVersion>
+    <FileVersion>1.2.4.0</FileVersion>
+    <Product>РџСѓР»СЊС‚ РґРѕСЃРєРё</Product>
+    <AssemblyTitle>РџСѓР»СЊС‚ РґРѕСЃРєРё</AssemblyTitle>
+    <Description>РџРµСЂРµРєР»СЋС‡РµРЅРёРµ СЌРєСЂР°РЅР° Рё Р·РІСѓРєР° РЅР° РёРЅС‚РµСЂР°РєС‚РёРІРЅСѓСЋ РїР°РЅРµР»СЊ РѕРґРЅРёРј РЅР°Р¶Р°С‚РёРµРј</Description>
+    <Company>РџСѓР»СЊС‚ РґРѕСЃРєРё</Company>
+    <Copyright>В© 2026</Copyright>
     <SatelliteResourceLanguages>ru</SatelliteResourceLanguages>
     <DebugType>embedded</DebugType>
   </PropertyGroup>
@@ -32,3 +32,6 @@
   </ItemGroup>
 
 </Project>
+
+
+

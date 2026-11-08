@@ -110,6 +110,17 @@
                        FontSize="13">
                 Снимите галочку для возврата к автоматическому определению устройств
             </TextBlock>
+            <Border Background="#E8F1FB" BorderBrush="#B6D4F0" BorderThickness="1"
+                    CornerRadius="4" Padding="12,8" Margin="0,10,0,0">
+                <StackPanel>
+                    <TextBlock Text="{Binding SelectionSummary}"
+                               Foreground="#0B4F8A" FontWeight="SemiBold"
+                               TextWrapping="Wrap" />
+                    <TextBlock Text="В каждом списке роль одна: если отметить «Компьютер» у другого устройства, предыдущая отметка снимется."
+                               Foreground="#4A6B88" FontSize="12"
+                               Margin="0,4,0,0" TextWrapping="Wrap" />
+                </StackPanel>
+            </Border>
         </StackPanel>
         
         <!-- Список дисплеев -->

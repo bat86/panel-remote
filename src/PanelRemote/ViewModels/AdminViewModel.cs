@@ -52,6 +52,24 @@ public sealed class AdminViewModel : ObservableObject
     /// <summary>Версия сборки — чтобы было видно, какая сборка тестируется.</summary>
     public string VersionText => $"версия {AppPaths.Version}";
 
+    /// <summary>
+    /// Понятная сводка выбора: у каждого списка ровно одна панель и один компьютер,
+    /// поэтому вторая отметка «Компьютер» снимает предыдущую.
+    /// </summary>
+    public string SelectionSummary
+    {
+        get
+        {
+            var panel = DisplayItems.FirstOrDefault(d => d.Role == DisplayRole.Panel)?.Display.DisplayName;
+            var computer = DisplayItems.FirstOrDefault(d => d.Role == DisplayRole.Computer)?.Display.DisplayName;
+            var panelAudio = AudioItems.FirstOrDefault(a => a.Role == AudioRole.Panel)?.Endpoint.DisplayName;
+            var computerAudio = AudioItems.FirstOrDefault(a => a.Role == AudioRole.Computer)?.Endpoint.DisplayName;
+
+            return $"Экран панели: {panel ?? "не выбран"}   ·   Экран компьютера: {computer ?? "не выбран"}\n" +
+                   $"Звук панели: {panelAudio ?? "не выбран"}   ·   Звук компьютера: {computerAudio ?? "не выбран"}";
+        }
+    }
+
     public string WindowTitle => $"Настройки администратора — Пульт доски {AppPaths.Version}";
     
     public bool UseManualConfiguration
@@ -115,7 +133,7 @@ public sealed class AdminViewModel : ObservableObject
                     }
                 }
 
-                DisplayItems.Add(new DisplayItemViewModel(display, role));
+                DisplayItems.Add(new DisplayItemViewModel(display, role, OnRoleChanged));
             }
             
             // Заполняем список аудиоустройств
@@ -147,10 +165,11 @@ public sealed class AdminViewModel : ObservableObject
                     }
                 }
 
-                AudioItems.Add(new AudioItemViewModel(endpoint, role));
+                AudioItems.Add(new AudioItemViewModel(endpoint, role, OnRoleChanged));
             }
             
-            StatusMessage = $"Найдено дисплеев: {DisplayItems.Count}, аудиоустройств: {AudioItems.Count}";
+            OnRoleChanged();
+        StatusMessage = $"Найдено дисплеев: {DisplayItems.Count}, аудиоустройств: {AudioItems.Count}";
         }
         catch (Exception ex)
         {
@@ -330,6 +349,11 @@ public sealed class AdminViewModel : ObservableObject
                    || string.Equals(display.ConnectionName, mapping.ConnectionType, StringComparison.OrdinalIgnoreCase));
     }
 
+    private void OnRoleChanged()
+    {
+        OnPropertyChanged(nameof(SelectionSummary));
+    }
+
     private void ExecuteResetToAuto()
     {
         UseManualConfiguration = false;
@@ -374,11 +398,13 @@ public enum AudioRole
 public sealed class DisplayItemViewModel : ObservableObject
 {
     private DisplayRole _role;
-    
-    public DisplayItemViewModel(DisplayTargetInfo display, DisplayRole role)
+    private readonly Action? _changed;
+
+    public DisplayItemViewModel(DisplayTargetInfo display, DisplayRole role, Action? changed = null)
     {
         Display = display;
         _role = role;
+        _changed = changed;
     }
     
     public DisplayTargetInfo Display { get; }
@@ -386,7 +412,13 @@ public sealed class DisplayItemViewModel : ObservableObject
     public DisplayRole Role
     {
         get => _role;
-        set => SetProperty(ref _role, value);
+        set
+        {
+            if (SetProperty(ref _role, value))
+            {
+                _changed?.Invoke();
+            }
+        }
     }
     
     public string DisplayInfo => 
@@ -401,11 +433,13 @@ public sealed class DisplayItemViewModel : ObservableObject
 public sealed class AudioItemViewModel : ObservableObject
 {
     private AudioRole _role;
-    
-    public AudioItemViewModel(AudioEndpointInfo endpoint, AudioRole role)
+    private readonly Action? _changed;
+
+    public AudioItemViewModel(AudioEndpointInfo endpoint, AudioRole role, Action? changed = null)
     {
         Endpoint = endpoint;
         _role = role;
+        _changed = changed;
     }
     
     public AudioEndpointInfo Endpoint { get; }
@@ -413,7 +447,13 @@ public sealed class AudioItemViewModel : ObservableObject
     public AudioRole Role
     {
         get => _role;
-        set => SetProperty(ref _role, value);
+        set
+        {
+            if (SetProperty(ref _role, value))
+            {
+                _changed?.Invoke();
+            }
+        }
     }
     
     public string AudioInfo => 

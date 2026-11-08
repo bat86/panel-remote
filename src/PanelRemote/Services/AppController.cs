@@ -80,18 +80,6 @@ public sealed class AppController : IDisposable
         _audio.StartMonitoring();
         await RefreshAsync();
 
-        // Если панель задана вручную, но Windows её не видит (погас HDMI-выход),
-        // пробуем один раз разбудить её штатным расширением экрана.
-        var adminConfig = _settings.Current.AdminConfig;
-        if (adminConfig?.UseManualConfiguration == true
-            && adminConfig.PanelDisplayOverride is not null
-            && !State.Display.PanelConnected)
-        {
-            _log.Info("Панель из ручной настройки не видна — пробую разбудить её расширением.");
-            await Task.Run(() => _display.Apply(DisplayMode.Extend)).ConfigureAwait(false);
-            await Task.Delay(1500).ConfigureAwait(false);
-            await RefreshAsync().ConfigureAwait(false);
-        }
     }
 
     /// <summary>Перечитать состояние. При появлении панели возвращает сохранённые настройки.</summary>

@@ -32,6 +32,7 @@ public sealed class DisplayService
     private string? _lastManualComputerKey;
     private string? _lastMissingManualPanel;
     private string? _lastMissingManualComputer;
+    private bool _wakeAttempted;
 
     public DisplayService(AppLog log, SettingsStore settings)
     {
@@ -165,14 +166,32 @@ public sealed class DisplayService
 
                 // Windows иногда гасит выход панели, и она пропадает из перечисления.
                 // Пробуем разбудить её штатным расширением, прежде чем сообщать об ошибке.
-                if (mode is DisplayMode.Duplicate or DisplayMode.Extend or DisplayMode.PanelOnly
-                    && !before.PanelConnected)
+                // Если нужный режим уже включён — не трогаем видеовыходы.
+                // Каждый лишний SetDisplayConfig заставляет мониторы пересинхронизироваться,
+                // из-за этого экраны и моргали при запуске и сохранении настроек.
+                var alreadyApplied = before.CurrentMode == mode
+                                     && (mode != DisplayMode.Duplicate || before.IsCloneTopology);
+
+                if (alreadyApplied)
                 {
+                    _log.Info($"Режим {mode.Short()} уже включён — переключение не требуется.");
+                    return new DisplayApplyResult(true, mode, before, "Этот режим уже включён.");
+                }
+
+                // Будим панель только если её действительно надо включить.
+                // Для «Расширить» это бессмысленно: ниже и так применяется EXTEND,
+                // а лишний вызов драйвера может подвесить видеовыход.
+                if (mode is DisplayMode.Duplicate or DisplayMode.PanelOnly
+                    && !before.PanelConnected
+                    && before.Panel is not null
+                    && !_wakeAttempted)
+                {
+                    _wakeAttempted = true;
                     _log.Info("Панель не видна — пробую разбудить её расширением экрана.");
                     var wake = SetTopology(DisplayMode.Extend, persistIfRequired: false);
                     if (wake == 0)
                     {
-                        Pause(1500);
+                        Pause(1200);
                         before = Detect();
                     }
                 }
@@ -196,13 +215,22 @@ public sealed class DisplayService
                     // но ничего не меняет, поэтому сразу правим набор путей.
                     code = ApplyByEditingPaths(mode, before) ? 0 : -1;
                 }
+                else if (mode == DisplayMode.Extend && !before.PanelConnected)
+                {
+                    // Без видимой панели SDC_TOPOLOGY_EXTEND может подвесить драйвер.
+                    // Собираем расширение из доступных путей — панель подключится позже.
+                    code = ApplyByEditingPaths(DisplayMode.Extend, before) ? 0 : -1;
+                }
                 else
                 {
-                    code = SetTopology(mode, persistIfRequired: true);
+                    // Сначала без SDC_PATH_PERSIST_IF_REQUIRED: на некоторых драйверах
+                    // этот флаг подвешивает SetDisplayConfig, и программа «зависает»
+                    // посреди переключения. Настройки режима мы храним сами.
+                    code = SetTopology(mode, persistIfRequired: false);
                     if (code != 0)
                     {
-                        _log.Warn($"SetDisplayConfig ({mode.Short()}) вернул {code} ({FormatError(code)}). Пробую без сохранения в базу.");
-                        code = SetTopology(mode, persistIfRequired: false);
+                        _log.Warn($"SetDisplayConfig ({mode.Short()}) вернул {code} ({FormatError(code)}). Пробую с сохранением в базу.");
+                        code = SetTopology(mode, persistIfRequired: true);
                     }
                 }
 
@@ -243,7 +271,7 @@ public sealed class DisplayService
                     if (!after.IsHealthy)
                     {
                         _log.Warn("Повтор не подтверждён после первого переключения — повторяю HDMI handshake.");
-                        SetTopology(DisplayMode.Duplicate, persistIfRequired: true);
+                        SetTopology(DisplayMode.Duplicate, persistIfRequired: false);
                         Pause(1100);
                         after = Detect();
                     }
@@ -1012,6 +1040,20 @@ public sealed class DisplayService
             var isAvailable = isActive || list.Any(p => p.targetInfo.targetAvailable != 0);
             var friendlyName = GetTargetName(chosen.targetInfo);
             var gdiName = GetSourceName(chosen.sourceInfo);
+
+            // Псевдоустройства Windows (например, «Disconnected»/WinDisc) не являются
+            // мониторами: из-за них панелью назначался «Дисплей без имени».
+            if (string.IsNullOrWhiteSpace(friendlyName)
+                && string.IsNullOrWhiteSpace(GetTargetPath(chosen.targetInfo)))
+            {
+                continue;
+            }
+
+            if (string.Equals(gdiName, "WinDisc", StringComparison.OrdinalIgnoreCase))
+            {
+                continue;
+            }
+
             var isPrimary = !string.IsNullOrWhiteSpace(gdiName) && primaryGdi.Contains(gdiName);
 
             uint width = 0;
