@@ -102,8 +102,8 @@ dotnet run --project tests/InteropLayoutChecks/InteropLayoutChecks.csproj -c Rel
 7. WPF в Wine не запускается из-за `MS.Internal.FontCache.Util`/URI; это не баг приложения. Для UI-проверки нужна Windows.
 8. **`SDC_ALLOW_CHANGES` несовместим с `SDC_TOPOLOGY_*`.** Вместе они дают 87 (`ERROR_INVALID_PARAMETER`), и переключение молча не происходит. `SDC_ALLOW_CHANGES` допустим только с `SDC_USE_SUPPLIED_DISPLAY_CONFIG`. С `SDC_TOPOLOGY_*` работают только `SDC_APPLY` и `SDC_PATH_PERSIST_IF_REQUIRED` (проверено `SDC_VALIDATE` на Windows 11).
 9. **На стационарном ПК `SDC_TOPOLOGY_INTERNAL`/`SDC_TOPOLOGY_EXTERNAL` возвращают 0, но ничего не меняют.** «Только компьютер» и «Только панель» делаются правкой набора путей через `SDC_USE_SUPPLIED_DISPLAY_CONFIG` (см. `ApplyByEditingPaths`).
-11. **Ручная настройка сопоставляется по EDID-пути, а не только по ключу.** `DisplayTargetInfo.Key` содержит target id, который меняется при переподключении кабеля, поэтому сохранённая вручную конфигурация «терялась». `DisplayService.ResolveManualTarget` проверяет по порядку: `MonitorDevicePath` (EDID), `DisplayKey`, затем имя + тип подключения. `AdminViewModel.MatchesOverride` повторяет ту же логику, чтобы окно показывало уже выбранные роли.
 10. **Баллы автоопределения панели.** HDMI 200 / USB-C 180 / DP 60, активность ±30/5, штраф за primary −60. Тип подключения обязан перевешивать активность, иначе HDMI-панель и активный DP-монитор получают равные баллы и панелью становится обычный монитор.
+11. **Ручная настройка сопоставляется по EDID-пути, а не только по ключу.** `DisplayTargetInfo.Key` содержит target id, который меняется при переподключении кабеля, поэтому сохранённая вручную конфигурация «терялась». `DisplayService.ResolveManualTarget` проверяет по порядку: `MonitorDevicePath` (EDID), `DisplayKey`, затем имя + тип подключения. `AdminViewModel.MatchesOverride` повторяет ту же логику, чтобы окно показывало уже выбранные роли.
 
 ## Что делать дальше
 
