@@ -27,6 +27,7 @@ public sealed class DisplayService
     private readonly AppLog _log;
     private readonly SettingsStore _settings;
     private readonly object _gate = new();
+    private string? _lastPanelLogKey;
 
     public DisplayService(AppLog log, SettingsStore settings)
     {
@@ -122,6 +123,31 @@ public sealed class DisplayService
         }
     }
 
+    /// <summary>
+    /// Возвращает все доступные дисплеи (активные и неактивные) для окна администратора.
+    /// </summary>
+    public List<DisplayTargetInfo> GetAllAvailableTargets()
+    {
+        lock (_gate)
+        {
+            try
+            {
+                var all = Query(DisplayConfigNative.QDC_ALL_PATHS);
+                var primaryGdi = GetPrimaryGdiNames();
+                return BuildTargets(all.Paths, all.Modes, primaryGdi)
+                    .Where(t => t.Available && !t.IsInternal)
+                    .OrderByDescending(t => t.Active)
+                    .ThenBy(t => t.DisplayName)
+                    .ToList();
+            }
+            catch (Exception ex)
+            {
+                _log.Error($"Ошибка получения списка дисплеев: {ex.Message}");
+                return new List<DisplayTargetInfo>();
+            }
+        }
+    }
+
     public DisplayApplyResult Apply(DisplayMode mode)
     {
         lock (_gate)
@@ -144,16 +170,31 @@ public sealed class DisplayService
                     return Failure(mode, before, "Не найден экран компьютера.");
                 }
 
-                var code = SetTopology(mode, persistIfRequired: true);
-                if (code != 0)
+                int code;
+                if (mode is DisplayMode.ComputerOnly or DisplayMode.PanelOnly)
                 {
-                    _log.Warn($"SetDisplayConfig ({mode.Short()}) вернул {code} ({FormatError(code)}). Пробую без сохранения в базу.");
-                    code = SetTopology(mode, persistIfRequired: false);
+                    // На стационарном ПК topology INTERNAL/EXTERNAL возвращает 0,
+                    // но ничего не меняет, поэтому сразу правим набор путей.
+                    code = ApplyByEditingPaths(mode, before) ? 0 : -1;
+                }
+                else
+                {
+                    code = SetTopology(mode, persistIfRequired: true);
+                    if (code != 0)
+                    {
+                        _log.Warn($"SetDisplayConfig ({mode.Short()}) вернул {code} ({FormatError(code)}). Пробую без сохранения в базу.");
+                        code = SetTopology(mode, persistIfRequired: false);
+                    }
                 }
 
                 if (code != 0)
                 {
                     _log.Warn($"Основное переключение не удалось: {code} ({FormatError(code)}). Пробую резервную схему.");
+                    if (mode is DisplayMode.ComputerOnly or DisplayMode.PanelOnly)
+                    {
+                        _log.Warn($"Правка путей для {mode.Short()} не удалась, дальше резервная схема.");
+                    }
+
                     TryApplyCustom(mode, before);
                 }
 
@@ -162,8 +203,16 @@ public sealed class DisplayService
 
                 if (!Matches(mode, after) && mode is DisplayMode.ComputerOnly or DisplayMode.PanelOnly or DisplayMode.Extend)
                 {
-                    _log.Warn($"Режим {mode.Short()} не подтвердился, пробую резервную схему ещё раз.");
-                    TryApplyCustom(mode, after);
+                    _log.Warn($"Режим {mode.Short()} не подтвердился, пробую ещё раз.");
+                    if (mode is DisplayMode.ComputerOnly or DisplayMode.PanelOnly)
+                    {
+                        ApplyByEditingPaths(mode, after);
+                    }
+                    else
+                    {
+                        TryApplyCustom(mode, after);
+                    }
+
                     Pause(500);
                     after = Detect();
                 }
@@ -232,9 +281,10 @@ public sealed class DisplayService
             _ => 0u
         };
 
+        // SDC_ALLOW_CHANGES допустим только вместе с SDC_USE_SUPPLIED_DISPLAY_CONFIG.
+        // С SDC_TOPOLOGY_* он даёт ERROR_INVALID_PARAMETER (87) и переключение не происходит.
         var flags = topology
-                    | DisplayConfigNative.SDC_APPLY
-                    | DisplayConfigNative.SDC_ALLOW_CHANGES;
+                    | DisplayConfigNative.SDC_APPLY;
         if (persistIfRequired)
         {
             flags |= DisplayConfigNative.SDC_PATH_PERSIST_IF_REQUIRED;
@@ -436,6 +486,240 @@ public sealed class DisplayService
             _log.Error("Ошибка резервной схемы переключения", ex);
             return false;
         }
+    }
+
+    /// <summary>
+    /// Включает и выключает отдельные экраны, собирая конфигурацию из доступных путей.
+    /// На стационарном ПК SDC_TOPOLOGY_INTERNAL и SDC_TOPOLOGY_EXTERNAL возвращают 0,
+    /// но ничего не меняют, поэтому «Только компьютер» и «Только панель» делаются
+    /// через SDC_USE_SUPPLIED_DISPLAY_CONFIG.
+    /// Одному монитору — один источник: иначе Windows переносит рабочий стол
+    /// на чужой видеорежим и включает не тот экран.
+    /// </summary>
+    private bool ApplyByEditingPaths(
+        DisplayMode mode,
+        DisplaySnapshot state,
+        IReadOnlyCollection<string>? restrictTo = null)
+    {
+        try
+        {
+            // Сначала штатно включаем все мониторы: Windows сама назначит корректные
+            // режимы, а нам останется выключить лишнее. Без этого выключенный
+            // монитор приходится поднимать синтезированным режимом, и он не оживает.
+            if (state.CurrentMode != DisplayMode.Extend && state.PanelConnected)
+            {
+                var extendCode = SetTopology(DisplayMode.Extend, persistIfRequired: false);
+                if (extendCode == 0)
+                {
+                    Pause(700);
+                }
+                else
+                {
+                    _log.Warn($"Не удалось предварительно расширить экран: {extendCode} ({FormatError(extendCode)}).");
+                }
+            }
+
+            var all = Query(DisplayConfigNative.QDC_ALL_PATHS);
+            var panelKey = state.Panel?.Key;
+
+            var monitors = all.Paths
+                .Where(p => p.targetInfo.id != uint.MaxValue && p.targetInfo.targetAvailable != 0)
+                .GroupBy(TargetKey, StringComparer.OrdinalIgnoreCase)
+                .OrderBy(g => g.Key, StringComparer.OrdinalIgnoreCase)
+                .ToList();
+
+            var wanted = new List<List<DisplayConfigNative.DISPLAYCONFIG_PATH_INFO>>();
+            foreach (var monitor in monitors)
+            {
+                var isPanel = panelKey is not null
+                              && string.Equals(monitor.Key, panelKey, StringComparison.OrdinalIgnoreCase);
+
+                var take = restrictTo is not null
+                    ? restrictTo.Contains(monitor.Key, StringComparer.OrdinalIgnoreCase)
+                    : mode switch
+                    {
+                        DisplayMode.PanelOnly => isPanel,
+                        DisplayMode.ComputerOnly => !isPanel,
+                        _ => true
+                    };
+
+                if (take)
+                {
+                    wanted.Add(monitor.ToList());
+                }
+            }
+
+            if (wanted.Count == 0)
+            {
+                _log.Warn("Правка путей (" + mode.Short() + "): нечего включать.");
+                return false;
+            }
+
+            var paths = new List<DisplayConfigNative.DISPLAYCONFIG_PATH_INFO>();
+            var modes = new List<DisplayConfigNative.DISPLAYCONFIG_MODE_INFO>();
+
+            for (var index = 0; index < wanted.Count; index++)
+            {
+                var candidates = wanted[index];
+                var preferredSource = (uint)index;
+
+                var path = candidates
+                    .OrderByDescending(p => ((p.flags & DisplayConfigNative.DISPLAYCONFIG_PATH_ACTIVE) != 0) && p.sourceInfo.id == preferredSource)
+                    .ThenByDescending(p => p.sourceInfo.id == preferredSource)
+                    .ThenByDescending(p => (p.flags & DisplayConfigNative.DISPLAYCONFIG_PATH_ACTIVE) != 0)
+                    .First();
+
+                var wasActive = (path.flags & DisplayConfigNative.DISPLAYCONFIG_PATH_ACTIVE) != 0;
+                var preferred = GetPreferredMode(path.targetInfo);
+
+                var sourceIndex = DisplayConfigNative.DISPLAYCONFIG_PATH_MODE_IDX_INVALID;
+                var copiedSource = wasActive
+                                   && TryCopyMode(
+                                       all.Modes,
+                                       path.sourceInfo.modeInfoIdx,
+                                       DisplayConfigNative.DISPLAYCONFIG_MODE_INFO_TYPE_SOURCE,
+                                       modes,
+                                       out sourceIndex);
+
+                if (!copiedSource)
+                {
+                    var width = preferred?.width ?? 0;
+                    var height = preferred?.height ?? 0;
+                    if (width == 0 || height == 0)
+                    {
+                        continue;
+                    }
+
+                    sourceIndex = (uint)modes.Count;
+                    modes.Add(new DisplayConfigNative.DISPLAYCONFIG_MODE_INFO
+                    {
+                        infoType = DisplayConfigNative.DISPLAYCONFIG_MODE_INFO_TYPE_SOURCE,
+                        id = path.sourceInfo.id,
+                        adapterId = path.sourceInfo.adapterId,
+                        sourceMode = new DisplayConfigNative.DISPLAYCONFIG_SOURCE_MODE
+                        {
+                            width = width,
+                            height = height,
+                            pixelFormat = DisplayConfigNative.DISPLAYCONFIG_PIXELFORMAT_32BPP,
+                            positionX = 0,
+                            positionY = 0
+                        }
+                    });
+                }
+
+                var targetIndex = DisplayConfigNative.DISPLAYCONFIG_PATH_MODE_IDX_INVALID;
+                var copiedTarget = wasActive
+                                   && TryCopyMode(
+                                       all.Modes,
+                                       path.targetInfo.modeInfoIdx,
+                                       DisplayConfigNative.DISPLAYCONFIG_MODE_INFO_TYPE_TARGET,
+                                       modes,
+                                       out targetIndex);
+
+                if (!copiedTarget)
+                {
+                    if (preferred is null)
+                    {
+                        continue;
+                    }
+
+                    targetIndex = (uint)modes.Count;
+                    modes.Add(new DisplayConfigNative.DISPLAYCONFIG_MODE_INFO
+                    {
+                        infoType = DisplayConfigNative.DISPLAYCONFIG_MODE_INFO_TYPE_TARGET,
+                        id = path.targetInfo.id,
+                        adapterId = path.targetInfo.adapterId,
+                        targetMode = preferred.Value.targetMode
+                    });
+                }
+
+                path.sourceInfo.modeInfoIdx = sourceIndex;
+                path.targetInfo.modeInfoIdx = targetIndex;
+                path.flags |= DisplayConfigNative.DISPLAYCONFIG_PATH_ACTIVE;
+                paths.Add(path);
+            }
+
+            if (paths.Count == 0)
+            {
+                _log.Warn("Правка путей (" + mode.Short() + "): не удалось собрать ни одного пути.");
+                return false;
+            }
+
+            var x = 0;
+            for (var i = 0; i < modes.Count; i++)
+            {
+                var info = modes[i];
+                if (info.infoType != DisplayConfigNative.DISPLAYCONFIG_MODE_INFO_TYPE_SOURCE)
+                {
+                    continue;
+                }
+
+                info.sourceMode.positionX = x;
+                info.sourceMode.positionY = 0;
+                modes[i] = info;
+                x += (int)info.sourceMode.width;
+            }
+
+            var flags = DisplayConfigNative.SDC_USE_SUPPLIED_DISPLAY_CONFIG
+                        | DisplayConfigNative.SDC_APPLY
+                        | DisplayConfigNative.SDC_ALLOW_CHANGES
+                        | DisplayConfigNative.SDC_SAVE_TO_DATABASE;
+
+            var result = DisplayConfigNative.SetDisplayConfig(
+                (uint)paths.Count,
+                paths.ToArray(),
+                (uint)modes.Count,
+                modes.ToArray(),
+                flags);
+
+            if (result != 0)
+            {
+                _log.Warn("Правка путей (" + mode.Short() + "): код " + result + ", пробую без сохранения в базу.");
+                result = DisplayConfigNative.SetDisplayConfig(
+                    (uint)paths.Count,
+                    paths.ToArray(),
+                    (uint)modes.Count,
+                    modes.ToArray(),
+                    flags & ~DisplayConfigNative.SDC_SAVE_TO_DATABASE);
+            }
+
+            if (result == 0)
+            {
+                _log.Info("Правка путей (" + mode.Short() + ") применила " + paths.Count + " пути(ей).");
+            }
+            else
+            {
+                _log.Warn("Правка путей (" + mode.Short() + ") не удалась: " + result + ".");
+            }
+
+            return result == 0;
+        }
+        catch (Exception ex)
+        {
+            _log.Error("Ошибка правки путей", ex);
+            return false;
+        }
+    }
+
+
+    private static bool TryCopyMode(
+        DisplayConfigNative.DISPLAYCONFIG_MODE_INFO[] source,
+        uint index,
+        uint expectedType,
+        List<DisplayConfigNative.DISPLAYCONFIG_MODE_INFO> destination,
+        out uint newIndex)
+    {
+        newIndex = DisplayConfigNative.DISPLAYCONFIG_PATH_MODE_IDX_INVALID;
+        if (index == DisplayConfigNative.DISPLAYCONFIG_PATH_MODE_IDX_INVALID
+            || index >= (uint)source.Length
+            || source[index].infoType != expectedType)
+        {
+            return false;
+        }
+
+        destination.Add(source[index]);
+        newIndex = (uint)(destination.Count - 1);
+        return true;
     }
 
     private void TryChooseCommonCloneMode(DisplaySnapshot snapshot)
@@ -791,31 +1075,51 @@ public sealed class DisplayService
             return null;
         }
 
-        return candidates
-            .OrderByDescending(PanelScore)
-            .ThenByDescending(t => t.Active)
-            .ThenByDescending(t => t.Width * t.Height)
-            .First();
+        // Панель чаще всего выключена, поэтому при равных баллах
+        // неактивный экран предпочтительнее активного.
+        var scored = candidates
+            .Select(t => new { Target = t, Score = PanelScore(t) })
+            .OrderByDescending(x => x.Score)
+            .ThenBy(x => x.Target.Active)
+            .ThenByDescending(x => x.Target.Width * x.Target.Height)
+            .ToList();
+
+        var chosen = scored.First().Target;
+
+        // Пишем в журнал только при смене выбранной панели, иначе он забивается.
+        if (!string.Equals(_lastPanelLogKey, chosen.Key, StringComparison.OrdinalIgnoreCase))
+        {
+            _lastPanelLogKey = chosen.Key;
+            _log.Info("Оценка панели: " + string.Join("; ", scored.Select(x =>
+                $"{x.Target.DisplayName} ({x.Target.ConnectionName}, active={x.Target.Active}, " +
+                $"primary={x.Target.IsPrimary}, score={x.Score})")));
+        }
+
+        return chosen;
     }
 
     private static int PanelScore(DisplayTargetInfo target)
     {
         var score = 0;
         score += target.Active ? 30 : 5;
+        // Тип подключения должен перевешивать остальные признаки: HDMI-панель
+        // обязана обгонять активный DisplayPort-монитор.
         score += target.Connection switch
         {
-            DisplayConnectionKind.Hdmi => 80,
-            DisplayConnectionKind.UsbC => 70,
-            DisplayConnectionKind.DisplayPort => 55,
-            DisplayConnectionKind.Dvi => 25,
+            DisplayConnectionKind.Hdmi => 200,
+            DisplayConnectionKind.UsbC => 180,
+            DisplayConnectionKind.DisplayPort => 60,
+            DisplayConnectionKind.Dvi => 30,
             DisplayConnectionKind.Vga => 10,
-            _ => 15
+            _ => 20
         };
 
         if (target.IsPrimary)
         {
-            // Основной монитор компьютера почти всегда не панель, но если он единственный — выберем его.
-            score -= 140;
+            // Основной монитор обычно не панель, но панель часто тоже назначают
+            // основным экраном, поэтому штраф небольшой — иначе HDMI-панель
+            // сравнивается по баллам с обычным монитором.
+            score -= 60;
         }
 
         var name = target.FriendlyName.ToLowerInvariant();

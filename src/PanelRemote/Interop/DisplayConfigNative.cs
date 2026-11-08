@@ -56,6 +56,9 @@ internal static class DisplayConfigNative
 
     public const uint DISPLAYCONFIG_PIXELFORMAT_32BPP = 4;
 
+    // DISPLAYCONFIG_SCALING_*: в повторе Windows использует IDENTITY.
+    public const uint DISPLAYCONFIG_SCALING_IDENTITY = 1;
+
     [StructLayout(LayoutKind.Sequential)]
     public struct LUID
     {

@@ -66,6 +66,7 @@ public sealed class AppController : IDisposable
     }
 
     public AppState State { get; private set; }
+    public DisplayService DisplayService => _display;
 
     public event Action<AppState>? StateChanged;
 

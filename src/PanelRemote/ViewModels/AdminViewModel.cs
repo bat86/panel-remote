@@ -71,10 +71,8 @@ public sealed class AdminViewModel : ObservableObject
             
             // Заполняем список дисплеев
             DisplayItems.Clear();
-            var allDisplays = state.Display.ActiveTargets.ToList();
-            
-            // Добавляем также неактивные, но доступные дисплеи
-            // (для этого нужно вызвать Detect напрямую, но пока используем ActiveTargets)
+            // Получаем ВСЕ доступные дисплеи (включая неактивные)
+            var allDisplays = _controller.DisplayService.GetAllAvailableTargets();
             
             foreach (var display in allDisplays)
             {
