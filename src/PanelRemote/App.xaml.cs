@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 using System.Windows;
@@ -57,6 +58,16 @@ public partial class App : Application
         }
 
         var portable = args.Contains("--portable");
+
+        // Сборка «папкой» (рядом лежит PanelRemote.dll) не копирует себя в профиль:
+        // иначе скопировался бы один EXE без зависимостей и не запустился.
+        var folderBuild = File.Exists(Path.Combine(AppContext.BaseDirectory, "PanelRemote.dll"));
+        if (folderBuild && !portable)
+        {
+            portable = true;
+            _log.Info("Запуск из папки: автоустановка не требуется, работаю на месте.");
+        }
+
         if (!portable && !Debugger.IsAttached && !AppPaths.IsInstalledLocation)
         {
             // Первый запуск одним файлом: тихо раскладываемся в профиль пользователя.

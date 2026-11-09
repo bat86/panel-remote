@@ -15,9 +15,9 @@
     <EnableWindowsTargeting>true</EnableWindowsTargeting>
     <Platforms>x64</Platforms>
     <PlatformTarget>x64</PlatformTarget>
-    <Version>1.3.0</Version>
-    <AssemblyVersion>1.3.0.0</AssemblyVersion>
-    <FileVersion>1.3.0.0</FileVersion>
+    <Version>1.3.1</Version>
+    <AssemblyVersion>1.3.1.0</AssemblyVersion>
+    <FileVersion>1.3.1.0</FileVersion>
     <Product>РџСѓР»СЊС‚ РґРѕСЃРєРё</Product>
     <AssemblyTitle>РџСѓР»СЊС‚ РґРѕСЃРєРё</AssemblyTitle>
     <Description>РџРµСЂРµРєР»СЋС‡РµРЅРёРµ СЌРєСЂР°РЅР° Рё Р·РІСѓРєР° РЅР° РёРЅС‚РµСЂР°РєС‚РёРІРЅСѓСЋ РїР°РЅРµР»СЊ РѕРґРЅРёРј РЅР°Р¶Р°С‚РёРµРј</Description>
@@ -32,6 +32,7 @@
   </ItemGroup>
 
 </Project>
+
 
 
 
